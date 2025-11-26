@@ -2,7 +2,7 @@ from http import HTTPStatus
 from fastapi import APIRouter, Depends, Query
 from fastapi.exceptions import HTTPException
 from lnbits.core.models import SimpleStatus, User
-from lnbits.decorators import check_user_exists
+from lnbits.decorators import check_user_exists, check_admin
 
 from .crud import (
     get_or_create_user,
