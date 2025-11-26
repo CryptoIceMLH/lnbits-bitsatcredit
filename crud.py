@@ -3,6 +3,7 @@
 from datetime import datetime, timezone
 from lnbits.db import Database
 from lnbits.helpers import urlsafe_short_hash
+from loguru import logger
 
 from .models import User, CreateUser, Transaction, CreateTransaction, TopUpRequest
 
@@ -33,7 +34,11 @@ async def get_or_create_user(npub: str) -> User:
 
 async def update_user_balance(npub: str, amount_delta: int) -> User:
     """Update user balance (positive for deposit, negative for spend)"""
+    logger.info(f"📊 Updating balance for {npub[:16]}...: delta={amount_delta} sats")
+
     user = await get_or_create_user(npub)
+    old_balance = user.balance_sats
+
     user.balance_sats += amount_delta
 
     if amount_delta > 0:
@@ -43,6 +48,9 @@ async def update_user_balance(npub: str, amount_delta: int) -> User:
 
     user.updated_at = datetime.now(timezone.utc)
     await db.update("bitsatcredit.users", user)
+
+    logger.info(f"✅ Balance updated: {npub[:16]}... {old_balance} → {user.balance_sats} sats")
+
     return user
 
 
@@ -98,17 +106,30 @@ async def get_topup_by_payment_hash(payment_hash: str) -> TopUpRequest | None:
 
 async def mark_topup_paid(payment_hash: str):
     """Mark top-up as paid and credit user"""
+    logger.info(f"🔍 Looking up top-up request for payment_hash: {payment_hash}")
+
     topup = await get_topup_by_payment_hash(payment_hash)
-    if not topup or topup.paid:
+    if not topup:
+        logger.error(f"❌ No top-up request found for payment_hash: {payment_hash}")
         return
+
+    if topup.paid:
+        logger.warning(f"⚠️ Top-up already marked as paid: {payment_hash}")
+        return
+
+    logger.info(f"💾 Marking top-up as paid: {topup.id}, npub: {topup.npub[:16]}..., amount: {topup.amount_sats}")
 
     # Mark paid
     topup.paid = True
     topup.paid_at = datetime.now(timezone.utc)
     await db.update("bitsatcredit.topup_requests", topup)
 
+    logger.info(f"💰 Updating user balance: {topup.npub[:16]}... +{topup.amount_sats} sats")
+
     # Credit user
     await update_user_balance(topup.npub, topup.amount_sats)
+
+    logger.info(f"📝 Creating transaction record")
 
     # Create transaction record
     await create_transaction(CreateTransaction(
@@ -118,6 +139,8 @@ async def mark_topup_paid(payment_hash: str):
         payment_hash=payment_hash,
         memo=f"Top-up: {topup.amount_sats} sats"
     ))
+
+    logger.info(f"✅ Top-up completed: {topup.npub[:16]}... credited with {topup.amount_sats} sats")
 
 
 # Admin/Stats operations

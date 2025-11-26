@@ -77,6 +77,14 @@
 
     <!-- Initial Form State - Enter Details -->
     <q-card v-else class="q-pa-lg">
+      <!-- WIP Warning Banner -->
+      <q-banner class="bg-warning text-white q-mb-md">
+        <template v-slot:avatar>
+          <q-icon name="warning" color="white"></q-icon>
+        </template>
+        <strong>EXPERIMENTAL PLATFORM:</strong> This is a work in progress. Credits may be lost at any time. Use at your own risk.
+      </q-banner>
+
       <q-card-section>
         <div class="text-h5">Top Up Credits</div>
         <div class="text-body2 text-grey-7 q-mt-xs">
@@ -111,7 +119,8 @@
           type="number"
           :rules="[
             val => !!val || 'Amount is required',
-            val => val >= 1 || 'Minimum 1 sat'
+            val => val >= 1 || 'Minimum 1 sat',
+            val => val <= 100 || 'Maximum 100 sats'
           ]"
         >
           <template v-slot:prepend>
@@ -124,26 +133,20 @@
           <q-btn
             outline
             color="primary"
-            label="1,000"
-            @click="topupForm.amount_sats = 1000"
+            label="5"
+            @click="topupForm.amount_sats = 5"
           ></q-btn>
           <q-btn
             outline
             color="primary"
-            label="5,000"
-            @click="topupForm.amount_sats = 5000"
+            label="10"
+            @click="topupForm.amount_sats = 10"
           ></q-btn>
           <q-btn
             outline
             color="primary"
-            label="10,000"
-            @click="topupForm.amount_sats = 10000"
-          ></q-btn>
-          <q-btn
-            outline
-            color="primary"
-            label="50,000"
-            @click="topupForm.amount_sats = 50000"
+            label="100"
+            @click="topupForm.amount_sats = 100"
           ></q-btn>
         </div>
       </q-card-section>
@@ -188,10 +191,48 @@
     <q-card>
       <q-card-section>
         <div class="text-subtitle2 q-mb-sm">Pricing</div>
-        <p class="q-my-none text-caption">
-          Message costs are determined by satellite transmission fees.
-          Check your balance and transaction history via the BitSatRelay API.
+        <p class="q-my-none">
+          <strong>1 sat per message</strong>
         </p>
+        <p class="q-my-sm text-caption">
+          Each satellite message costs 1 sat to send. Credits are deducted when your message is transmitted.
+        </p>
+      </q-card-section>
+    </q-card>
+
+    <q-card>
+      <q-card-section>
+        <div class="text-subtitle2 q-mb-sm">Check Balance</div>
+        <q-input
+          filled
+          dense
+          v-model.trim="balanceCheckNpub"
+          label="Enter your npub"
+          hint="Check your current balance"
+        >
+          <template v-slot:append>
+            <q-btn
+              flat
+              dense
+              icon="search"
+              @click="checkBalance"
+              :loading="balanceLoading"
+            >
+              <q-tooltip>Check Balance</q-tooltip>
+            </q-btn>
+          </template>
+        </q-input>
+
+        <div v-if="balanceInfo" class="q-mt-md q-pa-md bg-blue-1 rounded-borders">
+          <div class="text-subtitle2">Balance: <strong>${ balanceInfo.balance_sats } sats</strong></div>
+          <div class="text-caption q-mt-xs">Messages sent: ${ balanceInfo.message_count }</div>
+          <div class="text-caption">Total spent: ${ balanceInfo.total_spent } sats</div>
+          <div class="text-caption">Total deposited: ${ balanceInfo.total_deposited } sats</div>
+        </div>
+
+        <div v-if="balanceError" class="q-mt-md q-pa-md bg-red-1 rounded-borders text-red-8">
+          ${ balanceError }
+        </div>
       </q-card-section>
     </q-card>
   </div>
@@ -216,7 +257,11 @@
         topupId: '',
         invoicePaid: false,
         npub: '',
-        topupAmount: 0
+        topupAmount: 0,
+        balanceCheckNpub: '',
+        balanceInfo: null,
+        balanceError: '',
+        balanceLoading: false
       }
     },
     computed: {
@@ -300,6 +345,33 @@
           message: 'Invoice copied to clipboard',
           timeout: 1000
         })
+      },
+
+      async checkBalance() {
+        if (!this.balanceCheckNpub || !this.balanceCheckNpub.startsWith('npub1') || this.balanceCheckNpub.length !== 63) {
+          this.balanceError = 'Please enter a valid npub (must start with npub1 and be 63 characters)'
+          this.balanceInfo = null
+          return
+        }
+
+        try {
+          this.balanceLoading = true
+          this.balanceError = ''
+          this.balanceInfo = null
+
+          const {data} = await LNbits.api.request(
+            'GET',
+            `/bitsatcredit/api/v1/user/${this.balanceCheckNpub}/balance`,
+            null
+          )
+
+          this.balanceInfo = data
+        } catch (error) {
+          this.balanceError = 'Unable to fetch balance. User may not exist yet.'
+          this.balanceInfo = null
+        } finally {
+          this.balanceLoading = false
+        }
       },
 
       resetForm() {
