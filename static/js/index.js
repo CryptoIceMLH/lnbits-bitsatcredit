@@ -72,6 +72,9 @@ window.app = Vue.createApp({
       return this.userList.filter(user =>
         user.npub.toLowerCase().includes(search)
       )
+    },
+    publicPageUrl() {
+      return `${window.location.origin}/bitsatcredit/public`
     }
   },
 
@@ -154,6 +157,15 @@ window.app = Vue.createApp({
     //////////////// Utils ////////////////////////
     dateFromNow(date) {
       return moment(date).fromNow()
+    },
+
+    copyPublicUrl() {
+      navigator.clipboard.writeText(this.publicPageUrl)
+      Quasar.Notify.create({
+        type: 'positive',
+        message: 'Public URL copied to clipboard',
+        timeout: 1000
+      })
     }
   },
 

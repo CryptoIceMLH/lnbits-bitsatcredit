@@ -199,6 +199,43 @@
   <div class="col-12 col-md-4 col-lg-5 q-gutter-y-md">
     <q-card>
       <q-card-section>
+        <h6 class="q-mb-sm q-mt-none">Public Top-Up Page</h6>
+        <p class="q-my-none text-caption q-mb-md">
+          Share this link with users so they can top up their credits:
+        </p>
+        <q-input
+          readonly
+          filled
+          dense
+          :value="publicPageUrl"
+          label="Public URL"
+        >
+          <template v-slot:append>
+            <q-btn
+              flat
+              dense
+              icon="content_copy"
+              @click="copyPublicUrl"
+            >
+              <q-tooltip>Copy Link</q-tooltip>
+            </q-btn>
+            <q-btn
+              flat
+              dense
+              icon="open_in_new"
+              type="a"
+              :href="publicPageUrl"
+              target="_blank"
+            >
+              <q-tooltip>Open in New Tab</q-tooltip>
+            </q-btn>
+          </template>
+        </q-input>
+      </q-card-section>
+    </q-card>
+
+    <q-card>
+      <q-card-section>
         <h6 class="q-mb-sm q-mt-none">BitSatCredit</h6>
         <p class="q-my-none">
           User credit system for BitSatRelay satellite messaging.

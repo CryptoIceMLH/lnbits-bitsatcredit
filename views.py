@@ -21,3 +21,16 @@ async def index(req: Request, user: User = Depends(check_user_exists)):
     )
 
 
+@bitsatcredit_generic_router.get("/public", response_class=HTMLResponse)
+async def public_page(req: Request):
+    """Public credit top-up page - no authentication required"""
+    return bitsatcredit_renderer().TemplateResponse(
+        "bitsatcredit/public_page.html",
+        {
+            "request": req,
+            "public_page_name": "BitSatCredit Top-Up",
+            "public_page_description": "Add Lightning credits to your BitSatRelay account"
+        }
+    )
+
+
