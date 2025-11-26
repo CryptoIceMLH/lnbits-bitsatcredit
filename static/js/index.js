@@ -74,7 +74,11 @@ window.app = Vue.createApp({
       )
     },
     publicPageUrl() {
-      return `${window.location.origin}/bitsatcredit/public`
+      // Use first wallet as default for public page URL
+      if (this.g.user && this.g.user.wallets && this.g.user.wallets.length > 0) {
+        return `${window.location.origin}/bitsatcredit/${this.g.user.wallets[0].id}`
+      }
+      return `${window.location.origin}/bitsatcredit/YOUR_WALLET_ID`
     }
   },
 

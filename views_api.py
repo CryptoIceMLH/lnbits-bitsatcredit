@@ -101,29 +101,25 @@ async def api_spend_credits(npub: str, amount: int = Query(..., description="Amo
 
 ############################# Top-Up #############################
 @bitsatcredit_api_router.post(
-    "/api/v1/user/{npub}/topup",
+    "/api/v1/topup",
     name="Create Top-Up",
-    summary="Generate Lightning invoice for user top-up",
+    summary="Generate Lightning invoice for user top-up (public endpoint)",
     response_description="Invoice details",
     response_model=TopUpPaymentRequest,
 )
 async def api_create_topup(
-    npub: str,
     data: CreateTopUp,
-    user: User = Depends(check_user_exists),
+    wallet_id: str = Query(..., description="Wallet ID to receive payment"),
 ) -> TopUpPaymentRequest:
-    """Generate Lightning invoice for user to top up their balance"""
-    if data.npub != npub:
-        raise HTTPException(HTTPStatus.BAD_REQUEST, "npub mismatch")
-
+    """Generate Lightning invoice for user to top up their balance (no auth required)"""
     if data.amount_sats < 1:
         raise HTTPException(HTTPStatus.BAD_REQUEST, "Amount must be at least 1 sat")
 
-    # Generate invoice
+    # Generate invoice using provided wallet_id
     result = await generate_topup_invoice(
-        npub=npub,
+        npub=data.npub,
         amount_sats=data.amount_sats,
-        wallet_id=user.wallet_id
+        wallet_id=wallet_id
     )
 
     return TopUpPaymentRequest(

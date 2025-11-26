@@ -206,6 +206,7 @@
     delimiters: ['${', '}'],
     data: function () {
       return {
+        walletId: '{{ wallet_id }}',
         topupForm: {
           npub: '',
           amount_sats: null
@@ -231,10 +232,11 @@
     methods: {
       async createTopUp() {
         try {
+          // Call public endpoint with wallet_id query parameter (no auth required)
           const {data} = await LNbits.api.request(
             'POST',
-            `/bitsatcredit/api/v1/user/${this.topupForm.npub}/topup`,
-            this.g.user.wallets[0].adminkey,
+            `/bitsatcredit/api/v1/topup?wallet_id=${this.walletId}`,
+            null,  // No auth key needed for public endpoint
             this.topupForm
           )
 
