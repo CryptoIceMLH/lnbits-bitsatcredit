@@ -197,6 +197,66 @@
 
   <!-- Right Sidebar -->
   <div class="col-12 col-md-4 col-lg-5 q-gutter-y-md">
+
+    <!-- Settings Card -->
+    <q-card>
+      <q-card-section>
+        <h6 class="q-mb-sm q-mt-none">Settings</h6>
+        <div class="q-gutter-sm">
+          <q-select
+            filled
+            dense
+            v-model="selectedWallet"
+            :options="walletOptions"
+            label="Payment Wallet"
+            hint="Which wallet receives top-up payments"
+            @input="saveWalletSetting"
+          >
+            <template v-slot:prepend>
+              <q-icon name="account_balance_wallet"></q-icon>
+            </template>
+          </q-select>
+
+          <q-input
+            filled
+            dense
+            v-model="externalUrl"
+            label="External URL (optional)"
+            hint="For sharing public page externally (e.g., https://your-domain.com)"
+            @blur="saveExternalUrl"
+          >
+            <template v-slot:prepend>
+              <q-icon name="public"></q-icon>
+            </template>
+          </q-input>
+        </div>
+      </q-card-section>
+    </q-card>
+
+    <!-- Admin Actions Card -->
+    <q-card>
+      <q-card-section>
+        <h6 class="q-mb-sm q-mt-none">Admin Actions</h6>
+        <div class="q-gutter-sm">
+          <q-btn
+            color="primary"
+            icon="person_add"
+            label="Add User Credits"
+            class="full-width"
+            @click="showAddCreditsDialog"
+          ></q-btn>
+          <q-btn
+            color="secondary"
+            icon="add_circle"
+            label="Create User"
+            class="full-width"
+            @click="showCreateUserDialog"
+          ></q-btn>
+        </div>
+      </q-card-section>
+    </q-card>
+
+    <!-- Public Top-Up Page Card -->
     <q-card>
       <q-card-section>
         <h6 class="q-mb-sm q-mt-none">Public Top-Up Page</h6>
@@ -306,7 +366,171 @@
     </q-card-section>
 
     <q-card-actions align="right">
-      <q-btn flat label="Close" color="primary" v-close-popup></q-btn>
+      <q-btn
+        color="primary"
+        icon="edit"
+        label="Edit Balance"
+        @click="editUserBalance"
+      ></q-btn>
+      <q-btn flat label="Close" v-close-popup></q-btn>
+    </q-card-actions>
+  </q-card>
+</q-dialog>
+
+<!-- Add Credits Dialog -->
+<q-dialog v-model="addCreditsDialog.show">
+  <q-card style="min-width: 400px">
+    <q-card-section>
+      <div class="text-h6">Add Credits to User</div>
+    </q-card-section>
+
+    <q-card-section class="q-pt-none">
+      <q-input
+        filled
+        v-model="addCreditsDialog.npub"
+        label="User Npub"
+        hint="Enter npub1... or search existing user"
+        :rules="[val => (val && val.startsWith('npub1') && val.length === 63) || 'Invalid npub']"
+      >
+        <template v-slot:prepend>
+          <q-icon name="person"></q-icon>
+        </template>
+      </q-input>
+
+      <q-input
+        filled
+        v-model.number="addCreditsDialog.amount"
+        type="number"
+        label="Amount (sats)"
+        hint="Amount of credits to add (free/manual top-up)"
+        class="q-mt-md"
+        :rules="[val => val > 0 || 'Amount must be positive']"
+      >
+        <template v-slot:prepend>
+          <q-icon name="add_circle"></q-icon>
+        </template>
+      </q-input>
+
+      <q-input
+        filled
+        v-model="addCreditsDialog.memo"
+        label="Memo (optional)"
+        hint="Reason for credit addition"
+        class="q-mt-md"
+      >
+        <template v-slot:prepend>
+          <q-icon name="notes"></q-icon>
+        </template>
+      </q-input>
+    </q-card-section>
+
+    <q-card-actions align="right">
+      <q-btn flat label="Cancel" v-close-popup></q-btn>
+      <q-btn
+        color="primary"
+        label="Add Credits"
+        @click="addCreditsToUser"
+        :disable="!addCreditsDialog.npub || !addCreditsDialog.amount"
+      ></q-btn>
+    </q-card-actions>
+  </q-card>
+</q-dialog>
+
+<!-- Create User Dialog -->
+<q-dialog v-model="createUserDialog.show">
+  <q-card style="min-width: 400px">
+    <q-card-section>
+      <div class="text-h6">Create New User</div>
+    </q-card-section>
+
+    <q-card-section class="q-pt-none">
+      <q-input
+        filled
+        v-model="createUserDialog.npub"
+        label="User Npub"
+        hint="Enter npub1... (63 characters)"
+        :rules="[val => (val && val.startsWith('npub1') && val.length === 63) || 'Invalid npub']"
+      >
+        <template v-slot:prepend>
+          <q-icon name="person"></q-icon>
+        </template>
+      </q-input>
+
+      <q-input
+        filled
+        v-model.number="createUserDialog.initialBalance"
+        type="number"
+        label="Initial Balance (sats)"
+        hint="Starting credits (can be 0)"
+        class="q-mt-md"
+        :rules="[val => val >= 0 || 'Amount must be 0 or positive']"
+      >
+        <template v-slot:prepend>
+          <q-icon name="account_balance"></q-icon>
+        </template>
+      </q-input>
+    </q-card-section>
+
+    <q-card-actions align="right">
+      <q-btn flat label="Cancel" v-close-popup></q-btn>
+      <q-btn
+        color="primary"
+        label="Create User"
+        @click="createNewUser"
+        :disable="!createUserDialog.npub"
+      ></q-btn>
+    </q-card-actions>
+  </q-card>
+</q-dialog>
+
+<!-- Edit Balance Dialog -->
+<q-dialog v-model="editBalanceDialog.show">
+  <q-card style="min-width: 400px">
+    <q-card-section>
+      <div class="text-h6">Edit User Balance</div>
+    </q-card-section>
+
+    <q-card-section class="q-pt-none">
+      <div class="q-mb-md text-caption">
+        User: ${ editBalanceDialog.npub }
+      </div>
+      <div class="q-mb-md">
+        Current Balance: <strong>${ editBalanceDialog.currentBalance } sats</strong>
+      </div>
+
+      <q-input
+        filled
+        v-model.number="editBalanceDialog.newBalance"
+        type="number"
+        label="New Balance (sats)"
+        hint="Set new balance amount"
+        :rules="[val => val >= 0 || 'Balance cannot be negative']"
+      >
+        <template v-slot:prepend>
+          <q-icon name="edit"></q-icon>
+        </template>
+      </q-input>
+
+      <q-input
+        filled
+        v-model="editBalanceDialog.memo"
+        label="Memo (optional)"
+        hint="Reason for balance adjustment"
+        class="q-mt-md"
+      >
+        <template v-slot:prepend>
+          <q-icon name="notes"></q-icon>
+        </template>
+      </q-input>
+    </q-card-section>
+
+    <q-card-actions align="right">
+      <q-btn flat label="Cancel" v-close-popup></q-btn>
+      <q-btn
+        color="primary"
+        label="Update Balance"
+        @click="updateUserBalance"
+      ></q-btn>
     </q-card-actions>
   </q-card>
 </q-dialog>

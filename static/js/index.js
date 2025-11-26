@@ -41,6 +41,35 @@ window.app = Vue.createApp({
         transactions: []
       },
 
+      // Settings
+      selectedWallet: null,
+      walletOptions: [],
+      externalUrl: '',
+
+      // Add Credits Dialog
+      addCreditsDialog: {
+        show: false,
+        npub: '',
+        amount: null,
+        memo: ''
+      },
+
+      // Create User Dialog
+      createUserDialog: {
+        show: false,
+        npub: '',
+        initialBalance: 0
+      },
+
+      // Edit Balance Dialog
+      editBalanceDialog: {
+        show: false,
+        npub: '',
+        currentBalance: 0,
+        newBalance: 0,
+        memo: ''
+      },
+
       // Recent Transactions
       transactionList: [],
       transactionTable: {
@@ -74,11 +103,14 @@ window.app = Vue.createApp({
       )
     },
     publicPageUrl() {
-      // Use first wallet as default for public page URL
-      if (this.g.user && this.g.user.wallets && this.g.user.wallets.length > 0) {
-        return `${window.location.origin}/bitsatcredit/${this.g.user.wallets[0].id}`
-      }
-      return `${window.location.origin}/bitsatcredit/YOUR_WALLET_ID`
+      // Use external URL if configured, otherwise use current origin
+      const baseUrl = this.externalUrl || window.location.origin
+
+      // Use selected wallet or first wallet
+      const walletId = this.selectedWallet?.value ||
+                       (this.g.user?.wallets && this.g.user.wallets.length > 0 ? this.g.user.wallets[0].id : 'YOUR_WALLET_ID')
+
+      return `${baseUrl}/bitsatcredit/${walletId}`
     }
   },
 
@@ -170,6 +202,177 @@ window.app = Vue.createApp({
         message: 'Public URL copied to clipboard',
         timeout: 1000
       })
+    },
+
+    //////////////// Settings ////////////////////////
+    loadWalletOptions() {
+      if (this.g.user && this.g.user.wallets) {
+        this.walletOptions = this.g.user.wallets.map(w => ({
+          label: w.name,
+          value: w.id
+        }))
+        // Set first wallet as default
+        if (this.walletOptions.length > 0 && !this.selectedWallet) {
+          this.selectedWallet = this.walletOptions[0]
+        }
+      }
+    },
+
+    async saveWalletSetting() {
+      // Store wallet preference in localStorage
+      if (this.selectedWallet) {
+        localStorage.setItem('bitsatcredit_wallet_id', this.selectedWallet.value)
+        Quasar.Notify.create({
+          type: 'positive',
+          message: 'Wallet setting saved',
+          timeout: 1000
+        })
+      }
+    },
+
+    async saveExternalUrl() {
+      // Store external URL in localStorage
+      localStorage.setItem('bitsatcredit_external_url', this.externalUrl || '')
+      Quasar.Notify.create({
+        type: 'positive',
+        message: 'External URL saved',
+        timeout: 1000
+      })
+    },
+
+    //////////////// Admin Actions ////////////////////////
+    showAddCreditsDialog() {
+      this.addCreditsDialog = {
+        show: true,
+        npub: '',
+        amount: null,
+        memo: 'Admin credit addition'
+      }
+    },
+
+    async addCreditsToUser() {
+      try {
+        // Use the spend endpoint with negative amount to add credits
+        const {data} = await LNbits.api.request(
+          'POST',
+          `/bitsatcredit/api/v1/admin/add-credits`,
+          this.g.user.wallets[0].adminkey,
+          {
+            npub: this.addCreditsDialog.npub,
+            amount: this.addCreditsDialog.amount,
+            memo: this.addCreditsDialog.memo || 'Admin credit addition'
+          }
+        )
+
+        Quasar.Notify.create({
+          type: 'positive',
+          message: `Added ${this.addCreditsDialog.amount} sats to user`,
+          timeout: 2000
+        })
+
+        this.addCreditsDialog.show = false
+        await this.getUsers()
+        await this.getStats()
+      } catch (error) {
+        LNbits.utils.notifyApiError(error)
+      }
+    },
+
+    showCreateUserDialog() {
+      this.createUserDialog = {
+        show: true,
+        npub: '',
+        initialBalance: 100
+      }
+    },
+
+    async createNewUser() {
+      try {
+        // Get or create user
+        const {data: user} = await LNbits.api.request(
+          'GET',
+          `/bitsatcredit/api/v1/user/${this.createUserDialog.npub}`,
+          null
+        )
+
+        // If initial balance > 0, add credits
+        if (this.createUserDialog.initialBalance > 0) {
+          await LNbits.api.request(
+            'POST',
+            `/bitsatcredit/api/v1/admin/add-credits`,
+            this.g.user.wallets[0].adminkey,
+            {
+              npub: this.createUserDialog.npub,
+              amount: this.createUserDialog.initialBalance,
+              memo: 'Initial balance'
+            }
+          )
+        }
+
+        Quasar.Notify.create({
+          type: 'positive',
+          message: 'User created successfully',
+          timeout: 2000
+        })
+
+        this.createUserDialog.show = false
+        await this.getUsers()
+        await this.getStats()
+      } catch (error) {
+        LNbits.utils.notifyApiError(error)
+      }
+    },
+
+    editUserBalance() {
+      if (this.userDetailsDialog.user) {
+        this.editBalanceDialog = {
+          show: true,
+          npub: this.userDetailsDialog.user.npub,
+          currentBalance: this.userDetailsDialog.user.balance_sats,
+          newBalance: this.userDetailsDialog.user.balance_sats,
+          memo: ''
+        }
+        this.userDetailsDialog.show = false
+      }
+    },
+
+    async updateUserBalance() {
+      try {
+        const difference = this.editBalanceDialog.newBalance - this.editBalanceDialog.currentBalance
+
+        if (difference === 0) {
+          Quasar.Notify.create({
+            type: 'warning',
+            message: 'No change in balance',
+            timeout: 1000
+          })
+          this.editBalanceDialog.show = false
+          return
+        }
+
+        await LNbits.api.request(
+          'POST',
+          `/bitsatcredit/api/v1/admin/add-credits`,
+          this.g.user.wallets[0].adminkey,
+          {
+            npub: this.editBalanceDialog.npub,
+            amount: difference,
+            memo: this.editBalanceDialog.memo || `Balance adjustment: ${this.editBalanceDialog.currentBalance} -> ${this.editBalanceDialog.newBalance}`
+          }
+        )
+
+        Quasar.Notify.create({
+          type: 'positive',
+          message: 'Balance updated successfully',
+          timeout: 2000
+        })
+
+        this.editBalanceDialog.show = false
+        await this.getUsers()
+        await this.getStats()
+      } catch (error) {
+        LNbits.utils.notifyApiError(error)
+      }
     }
   },
 
@@ -180,5 +383,14 @@ window.app = Vue.createApp({
     await this.getStats()
     await this.getUsers()
     await this.getRecentTransactions()
+
+    // Load wallet options and settings
+    this.loadWalletOptions()
+    const savedWalletId = localStorage.getItem('bitsatcredit_wallet_id')
+    if (savedWalletId) {
+      this.selectedWallet = this.walletOptions.find(w => w.value === savedWalletId) || this.walletOptions[0]
+    }
+
+    this.externalUrl = localStorage.getItem('bitsatcredit_external_url') || ''
   }
 })
