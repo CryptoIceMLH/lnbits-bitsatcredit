@@ -1,141 +1,287 @@
 <!--/////////////////////////////////////////////////-->
-<!--////////////////USER FACING PAGE/////////////////-->
+<!--/////////// BitSatCredit Top-Up Page ////////////-->
 <!--/////////////////////////////////////////////////-->
 
-{% extends "public.html" %} {% block page %}
+{% extends "public.html" %}
+{% block page %}
 <div class="row q-col-gutter-md justify-center">
-  <div class="col-12 col-sm-6 col-md-5 col-lg-4">
-    <q-card v-if="invoicePaid" class="q-pa-lg">
-      <q-card-section class="q-pa-none q-mb-md">
-        <span class="text-h5">Relay:</span>
-        <span v-text="relayId" class="text-h5"></span>
+  <div class="col-12 col-sm-8 col-md-6 col-lg-5">
+    <!-- Success State - Payment Confirmed -->
+    <q-card v-if="invoicePaid" class="q-pa-lg text-center">
+      <q-card-section>
         <q-icon
-          name="check"
-          transition-show="fade"
-          class="text-light-green"
-          style="font-size: min(90vw, 40em)"
+          name="check_circle"
+          color="positive"
+          style="font-size: 5em"
         ></q-icon>
+        <div class="text-h5 q-mt-md">Payment Received!</div>
+        <div class="text-body1 q-mt-sm">
+          Your account has been credited with <strong>${ topupAmount } sats</strong>
+        </div>
+        <div class="text-caption q-mt-sm text-grey-7">
+          Npub: ${ npub.substring(0, 20) }...
+        </div>
+      </q-card-section>
+      <q-card-section>
+        <q-btn
+          unelevated
+          color="primary"
+          label="Top Up Again"
+          @click="resetForm"
+        ></q-btn>
       </q-card-section>
     </q-card>
+
+    <!-- Payment Pending State - Show QR Code -->
     <q-card v-else-if="paymentRequest" class="q-pa-lg">
-      <q-card-section class="q-pa-none q-mb-md">
-        <span class="text-h5">Relay:</span>
-        <span v-text="relayId" class="text-h5"></span>
+      <q-card-section>
+        <div class="text-h5 text-center">Scan to Pay</div>
+        <div class="text-body2 text-center text-grey-7 q-mt-xs">
+          ${ topupAmount } sats
+        </div>
       </q-card-section>
-      <q-card-section class="q-pa-none q-mb-md">
+
+      <q-card-section class="q-pa-none q-mb-md flex flex-center">
         <lnbits-qrcode
           :href="'lightning:' + paymentRequest"
           :value="'lightning:' + paymentRequest"
         ></lnbits-qrcode>
       </q-card-section>
+
+      <q-card-section>
+        <q-input
+          filled
+          readonly
+          dense
+          v-model="paymentRequest"
+          label="Lightning Invoice"
+        >
+          <template v-slot:append>
+            <q-btn
+              flat
+              dense
+              icon="content_copy"
+              @click="copyToClipboard(paymentRequest)"
+            >
+              <q-tooltip>Copy Invoice</q-tooltip>
+            </q-btn>
+          </template>
+        </q-input>
+      </q-card-section>
+
+      <q-card-section class="text-center">
+        <q-spinner-dots color="primary" size="40px"></q-spinner-dots>
+        <div class="text-caption q-mt-sm">Waiting for payment...</div>
+      </q-card-section>
     </q-card>
 
+    <!-- Initial Form State - Enter Details -->
     <q-card v-else class="q-pa-lg">
-      <q-card-section class="q-pa-none q-mb-md">
-        <span class="text-h5">Relay</span>
-      </q-card-section>
-      <q-card-section class="q-pa-none q-col-gutter-md">
-         
-<q-input
-  filled
-  dense
-  v-model.trim="publicRelay.npub"
-  label="Npub"
-  hint=" "
-></q-input>
-  
-<q-input
-  filled
-  dense
-  v-model.trim="publicRelay.sats"
-  label="Sats"
-  hint=" "
-  type="number"
-></q-input>
- 
-      </q-card-section>
-
-      <q-card-section class="q-pa-none q-mt-md">
-        <div class="row">
-          <div class="col">
-            <q-btn
-              @click="submitRelay"
-              unelevated
-              color="primary"
-              class="float-right"
-            >
-              <span>Submit</span>
-            </q-btn>
-          </div>
+      <q-card-section>
+        <div class="text-h5">Top Up Credits</div>
+        <div class="text-body2 text-grey-7 q-mt-xs">
+          Add Lightning credits to your BitSatRelay account
         </div>
       </q-card-section>
-      <q-card-section></q-card-section>
+
+      <q-card-section class="q-gutter-md">
+        <q-input
+          filled
+          dense
+          v-model.trim="topupForm.npub"
+          label="Your Nostr Public Key (npub)"
+          hint="Enter your npub to top up your account"
+          :rules="[
+            val => !!val || 'Npub is required',
+            val => val.startsWith('npub1') || 'Must start with npub1',
+            val => val.length === 63 || 'Invalid npub length'
+          ]"
+        >
+          <template v-slot:prepend>
+            <q-icon name="person"></q-icon>
+          </template>
+        </q-input>
+
+        <q-input
+          filled
+          dense
+          v-model.number="topupForm.amount_sats"
+          label="Amount (sats)"
+          hint="Minimum 1 sat"
+          type="number"
+          :rules="[
+            val => !!val || 'Amount is required',
+            val => val >= 1 || 'Minimum 1 sat'
+          ]"
+        >
+          <template v-slot:prepend>
+            <q-icon name="bolt"></q-icon>
+          </template>
+        </q-input>
+
+        <!-- Quick Amount Buttons -->
+        <div class="row q-gutter-sm justify-center">
+          <q-btn
+            outline
+            color="primary"
+            label="1,000"
+            @click="topupForm.amount_sats = 1000"
+          ></q-btn>
+          <q-btn
+            outline
+            color="primary"
+            label="5,000"
+            @click="topupForm.amount_sats = 5000"
+          ></q-btn>
+          <q-btn
+            outline
+            color="primary"
+            label="10,000"
+            @click="topupForm.amount_sats = 10000"
+          ></q-btn>
+          <q-btn
+            outline
+            color="primary"
+            label="50,000"
+            @click="topupForm.amount_sats = 50000"
+          ></q-btn>
+        </div>
+      </q-card-section>
+
+      <q-card-section>
+        <q-btn
+          unelevated
+          color="primary"
+          class="full-width"
+          label="Generate Invoice"
+          @click="createTopUp"
+          :disable="!isFormValid"
+        ></q-btn>
+      </q-card-section>
     </q-card>
   </div>
-  <div class="col-12 col-sm-6 col-md-5 col-lg-4 q-gutter-y-md">
+
+  <!-- Info Sidebar -->
+  <div class="col-12 col-sm-8 col-md-6 col-lg-4 q-gutter-y-md">
     <q-card>
       <q-card-section>
-        <h6 class="q-mb-sm q-mt-none">{{ public_page_name }}</h6>
-        <p class="q-my-none">{{ public_page_description }}</p>
+        <h6 class="q-mb-sm q-mt-none">BitSatCredit</h6>
+        <p class="q-my-none">
+          Top up your Lightning credits to send messages via BitSatRelay satellite network.
+        </p>
+      </q-card-section>
+    </q-card>
+
+    <q-card>
+      <q-card-section>
+        <div class="text-subtitle2 q-mb-sm">How it works</div>
+        <ol class="q-pl-md q-my-none">
+          <li>Enter your Nostr public key (npub)</li>
+          <li>Choose the amount of sats to add</li>
+          <li>Pay the Lightning invoice</li>
+          <li>Credits are added instantly</li>
+          <li>Use credits to send satellite messages</li>
+        </ol>
+      </q-card-section>
+    </q-card>
+
+    <q-card>
+      <q-card-section>
+        <div class="text-subtitle2 q-mb-sm">Pricing</div>
+        <p class="q-my-none text-caption">
+          Message costs are determined by satellite transmission fees.
+          Check your balance and transaction history via the BitSatRelay API.
+        </p>
       </q-card-section>
     </q-card>
   </div>
 </div>
-{% endblock %} {% block scripts %}
+{% endblock %}
+
+{% block scripts %}
 <script>
   window.app = Vue.createApp({
     el: '#vue',
     mixins: [windowMixin],
+    delimiters: ['${', '}'],
     data: function () {
       return {
+        topupForm: {
+          npub: '',
+          amount_sats: null
+        },
         paymentRequest: '',
         paymentHash: '',
+        topupId: '',
         invoicePaid: false,
-        serverId: '{{ server_id }}',
-        relayId: null,
-        publicRelay: {}
+        npub: '',
+        topupAmount: 0
+      }
+    },
+    computed: {
+      isFormValid() {
+        return (
+          this.topupForm.npub &&
+          this.topupForm.npub.startsWith('npub1') &&
+          this.topupForm.npub.length === 63 &&
+          this.topupForm.amount_sats >= 1
+        )
       }
     },
     methods: {
-      async submitRelay() {
-        
+      async createTopUp() {
         try {
           const {data} = await LNbits.api.request(
-            'PUT',
-            `/bitsatcredit/api/v1/relay/public/${this.serverId}`,
-            null,
-            this.publicRelay
+            'POST',
+            `/bitsatcredit/api/v1/user/${this.topupForm.npub}/topup`,
+            this.g.user.wallets[0].adminkey,
+            this.topupForm
           )
-          this.relayId = data.relay_id
+
+          this.topupId = data.topup_id
           this.paymentHash = data.payment_hash
-          this.paymentRequest = data.payment_request
+          this.paymentRequest = data.bolt11
+          this.npub = this.topupForm.npub
+          this.topupAmount = this.topupForm.amount_sats
 
           this.waitForPayment(this.paymentHash)
+
           Quasar.Notify.create({
             type: 'positive',
-            message: this.$t('Relay submitted')
+            message: 'Invoice generated! Please pay to add credits.'
           })
         } catch (error) {
           LNbits.utils.notifyApiError(error)
         }
       },
+
       async waitForPayment(paymentHash) {
         try {
           const url = new URL(window.location)
           url.protocol = url.protocol === 'https:' ? 'wss' : 'ws'
           url.pathname = `/api/v1/ws/${paymentHash}`
+
           const ws = new WebSocket(url)
+
           ws.addEventListener('message', async ({data}) => {
             const payment = JSON.parse(data)
             if (payment.pending === false) {
               this.invoicePaid = true
+
               Quasar.Notify.create({
                 type: 'positive',
-                message: 'Invoice Paid!'
+                message: 'Payment received! Credits added to your account.',
+                timeout: 5000
               })
+
               ws.close()
             }
           })
+
+          ws.addEventListener('error', (error) => {
+            console.warn('WebSocket error:', error)
+          })
+
         } catch (err) {
           console.warn(err)
           Quasar.Notify.create({
@@ -143,10 +289,32 @@
             message: 'Error waiting for payment.'
           })
         }
+      },
+
+      copyToClipboard(text) {
+        navigator.clipboard.writeText(text)
+        Quasar.Notify.create({
+          type: 'positive',
+          message: 'Invoice copied to clipboard',
+          timeout: 1000
+        })
+      },
+
+      resetForm() {
+        this.topupForm = {
+          npub: '',
+          amount_sats: null
+        }
+        this.paymentRequest = ''
+        this.paymentHash = ''
+        this.topupId = ''
+        this.invoicePaid = false
+        this.npub = ''
+        this.topupAmount = 0
       }
     },
     created: function () {
-      // Will trigger payment reaction when payment received, sent from tasks.py
+      // Initialize form
     }
   })
 </script>

@@ -4,276 +4,165 @@ window.app = Vue.createApp({
   delimiters: ['${', '}'],
   data: function () {
     return {
-      currencyOptions: ['sat'],
-      settingsFormDialog: {
-        show: false,
-        data: {}
+      stats: {
+        total_users: 0,
+        total_balance: 0,
+        total_spent: 0,
+        total_deposited: 0,
+        total_messages: 0
       },
 
-      serverFormDialog: {
-        show: false,
-        data: {
-          wallet: null,
-          credit: null,
-          
-        }
-      },
-      serverList: [],
-      serverTable: {
+      // User Management
+      userList: [],
+      userTable: {
         search: '',
         loading: false,
         columns: [
-          {"name": "name_id", "align": "left", "label": "Name", "field": "name_id", "sortable": true},
-          {"name": "description_id", "align": "left", "label": "Description", "field": "description_id", "sortable": true},
-          {"name": "wallet", "align": "left", "label": "Wallet", "field": "wallet", "sortable": true},
-          {"name": "credit", "align": "left", "label": "Credit", "field": "credit", "sortable": true},
-          {"name": "updated_at", "align": "left", "label": "Updated At", "field": "updated_at", "sortable": true},
-          {"name": "id", "align": "left", "label": "ID", "field": "id", "sortable": true},
-          
+          {name: 'npub', align: 'left', label: 'Npub', field: 'npub', sortable: true},
+          {name: 'balance_sats', align: 'right', label: 'Balance (sats)', field: 'balance_sats', sortable: true},
+          {name: 'total_spent', align: 'right', label: 'Total Spent', field: 'total_spent', sortable: true},
+          {name: 'total_deposited', align: 'right', label: 'Total Deposited', field: 'total_deposited', sortable: true},
+          {name: 'message_count', align: 'right', label: 'Messages', field: 'message_count', sortable: true},
+          {name: 'updated_at', align: 'left', label: 'Last Activity', field: 'updated_at', sortable: true}
         ],
         pagination: {
           sortBy: 'updated_at',
-          rowsPerPage: 10,
-          page: 1,
           descending: true,
+          page: 1,
+          rowsPerPage: 10,
           rowsNumber: 10
         }
       },
 
-      relayFormDialog: {
+      // User Details Dialog
+      userDetailsDialog: {
         show: false,
-        server: {label: 'All Server', value: ''},
-        data: {}
+        user: null,
+        transactions: []
       },
-      relayList: [],
-      relayTable: {
-        search: '',
+
+      // Recent Transactions
+      transactionList: [],
+      transactionTable: {
         loading: false,
         columns: [
-          {"name": "npub", "align": "left", "label": "Npub", "field": "npub", "sortable": true},
-          {"name": "sats", "align": "left", "label": "Sats", "field": "sats", "sortable": true},
-          {"name": "paid", "align": "left", "label": "Paid", "field": "paid", "sortable": true},
-          {"name": "updated_at", "align": "left", "label": "Updated At", "field": "updated_at", "sortable": true},
-          {"name": "id", "align": "left", "label": "ID", "field": "id", "sortable": true},
-          
+          {name: 'created_at', align: 'left', label: 'Date', field: 'created_at', sortable: true},
+          {name: 'npub', align: 'left', label: 'User', field: 'npub', sortable: true},
+          {name: 'type', align: 'left', label: 'Type', field: 'type', sortable: true},
+          {name: 'amount_sats', align: 'right', label: 'Amount (sats)', field: 'amount_sats', sortable: true},
+          {name: 'memo', align: 'left', label: 'Memo', field: 'memo', sortable: false}
         ],
         pagination: {
-          sortBy: 'updated_at',
-          rowsPerPage: 10,
-          page: 1,
+          sortBy: 'created_at',
           descending: true,
+          page: 1,
+          rowsPerPage: 10,
           rowsNumber: 10
         }
       }
     }
   },
-  watch: {
-    'serverTable.search': {
-      handler() {
-        const props = {}
-        if (this.serverTable.search) {
-          props['search'] = this.serverTable.search
-        }
-        this.getServer()
+
+  computed: {
+    filteredUsers() {
+      if (!this.userTable.search) {
+        return this.userList
       }
-    },
-    'relayTable.search': {
-      handler() {
-        const props = {}
-        if (this.relayTable.search) {
-          props['search'] = this.relayTable.search
-        }
-        this.getRelay()
-      }
-    },
-    'relayFormDialog.server.value': {
-      handler() {
-        const props = {}
-        if (this.relayTable.search) {
-          props['search'] = this.relayTable.search
-        }
-        this.getRelay()
-      }
+      const search = this.userTable.search.toLowerCase()
+      return this.userList.filter(user =>
+        user.npub.toLowerCase().includes(search)
+      )
     }
   },
 
   methods: {
-
-    //////////////// Server ////////////////////////
-    async showNewServerForm() {
-      this.serverFormDialog.data = {
-          wallet: null,
-          credit: null,
-          
-      }
-      this.serverFormDialog.show = true
-    },
-    async showEditServerForm(data) {
-      this.serverFormDialog.data = {...data}
-      this.serverFormDialog.show = true
-    },
-    async saveServer() {
-      
+    //////////////// Stats ////////////////////////
+    async getStats() {
       try {
-        const data = {extra: {}, ...this.serverFormDialog.data}
-        const method = data.id ? 'PUT' : 'POST'
-        const entry = data.id ? `/${data.id}` : ''
-        await LNbits.api.request(
-          method,
-          '/bitsatcredit/api/v1/server' + entry,
-          null,
-          data
+        const {data} = await LNbits.api.request(
+          'GET',
+          '/bitsatcredit/api/v1/stats',
+          null
         )
-        this.getServer()
-        this.serverFormDialog.show = false
+        this.stats = data
       } catch (error) {
         LNbits.utils.notifyApiError(error)
       }
     },
 
-    async getServer(props) {
-      
+    //////////////// Users ////////////////////////
+    async getUsers() {
       try {
-        this.serverTable.loading = true
-        const params = LNbits.utils.prepareFilterQuery(
-          this.serverTable,
-          props
-        )
+        this.userTable.loading = true
         const {data} = await LNbits.api.request(
           'GET',
-          `/bitsatcredit/api/v1/server/paginated?${params}`,
+          '/bitsatcredit/api/v1/users?limit=100&offset=0',
           null
         )
-        this.serverList = data.data
-        this.serverTable.pagination.rowsNumber = data.total
+        this.userList = data
+        this.userTable.pagination.rowsNumber = data.length
       } catch (error) {
         LNbits.utils.notifyApiError(error)
       } finally {
-        this.serverTable.loading = false
+        this.userTable.loading = false
       }
     },
-    async deleteServer(serverId) {
-      await LNbits.utils
-        .confirmDialog('Are you sure you want to delete this Server?')
-        .onOk(async () => {
-          try {
-            
-            await LNbits.api.request(
-              'DELETE',
-              '/bitsatcredit/api/v1/server/' + serverId,
-              null
-            )
-            await this.getServer()
-          } catch (error) {
-            LNbits.utils.notifyApiError(error)
-          }
-        })
-    },
-    async exportServerCSV() {
-      await LNbits.utils.exportCSV(
-        this.serverTable.columns,
-        this.serverList,
-        'server_' + new Date().toISOString().slice(0, 10) + '.csv'
-      )
-    },
 
-    //////////////// Relay ////////////////////////
-    async showEditRelayForm(data) {
-      this.relayFormDialog.data = {...data}
-      this.relayFormDialog.show = true
-    },
-    async saveRelay() {
-      
+    async showUserDetails(user) {
       try {
-        const data = {extra: {}, ...this.relayFormDialog.data}
-        const method = data.id ? 'PUT' : 'POST'
-        const entry = data.id ? `/${data.id}` : ''
-        await LNbits.api.request(
-          method,
-          '/bitsatcredit/api/v1/relay' + entry,
-          null,
-          data
+        this.userDetailsDialog.user = user
+        this.userDetailsDialog.show = true
+
+        // Fetch user's transaction history
+        const {data} = await LNbits.api.request(
+          'GET',
+          `/bitsatcredit/api/v1/user/${user.npub}/transactions`,
+          null
         )
-        this.getRelay()
-        this.relayFormDialog.show = false
+        this.userDetailsDialog.transactions = data
       } catch (error) {
         LNbits.utils.notifyApiError(error)
       }
     },
 
-    async getRelay(props) {
-      
+    async exportUsersCSV() {
+      await LNbits.utils.exportCSV(
+        this.userTable.columns,
+        this.userList,
+        'bitsatcredit_users_' + new Date().toISOString().slice(0, 10) + '.csv'
+      )
+    },
+
+    //////////////// Transactions ////////////////////////
+    async getRecentTransactions() {
       try {
-        this.relayTable.loading = true
-        let params = LNbits.utils.prepareFilterQuery(
-          this.relayTable,
-          props
-        )
-        const serverId = this.relayFormDialog.server.value
-        if (serverId) {
-          params += `&server_id=${serverId}`
-        }
+        this.transactionTable.loading = true
         const {data} = await LNbits.api.request(
           'GET',
-          `/bitsatcredit/api/v1/relay/paginated?${params}`,
+          '/bitsatcredit/api/v1/transactions/recent?limit=50',
           null
         )
-        this.relayList = data.data
-        this.relayTable.pagination.rowsNumber = data.total
+        this.transactionList = data
+        this.transactionTable.pagination.rowsNumber = data.length
       } catch (error) {
         LNbits.utils.notifyApiError(error)
       } finally {
-        this.relayTable.loading = false
+        this.transactionTable.loading = false
       }
-    },
-    async deleteRelay(relayId) {
-      await LNbits.utils
-        .confirmDialog('Are you sure you want to delete this Relay?')
-        .onOk(async () => {
-          try {
-            
-            await LNbits.api.request(
-              'DELETE',
-              '/bitsatcredit/api/v1/relay/' + relayId,
-              null
-            )
-            await this.getRelay()
-          } catch (error) {
-            LNbits.utils.notifyApiError(error)
-          }
-        })
-    },
-
-    async exportRelayCSV() {
-      await LNbits.utils.exportCSV(
-        this.relayTable.columns,
-        this.relayList,
-        'relay_' + new Date().toISOString().slice(0, 10) + '.csv'
-      )
     },
 
     //////////////// Utils ////////////////////////
     dateFromNow(date) {
       return moment(date).fromNow()
-    },
-    async fetchCurrencies() {
-      try {
-        const response = await LNbits.api.request('GET', '/api/v1/currencies')
-        this.currencyOptions = ['sat', ...response.data]
-      } catch (error) {
-        LNbits.utils.notifyApiError(error)
-      }
     }
   },
+
   ///////////////////////////////////////////////////
   //////LIFECYCLE FUNCTIONS RUNNING ON PAGE LOAD/////
   ///////////////////////////////////////////////////
   async created() {
-    this.fetchCurrencies()
-    this.getServer()
-    this.getRelay()
-
-    
-    
+    await this.getStats()
+    await this.getUsers()
+    await this.getRecentTransactions()
   }
 })

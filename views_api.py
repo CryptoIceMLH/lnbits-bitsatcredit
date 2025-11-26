@@ -147,6 +147,48 @@ async def api_get_transactions(npub: str) -> list[Transaction]:
     return transactions
 
 
+############################# Admin Endpoints #############################
+@bitsatcredit_api_router.get(
+    "/api/v1/users",
+    name="Get All Users",
+    summary="Get list of all users (admin)",
+    response_description="List of users",
+    response_model=list[BitSatUser],
+)
+async def api_get_all_users(limit: int = 100, offset: int = 0) -> list[BitSatUser]:
+    """Get paginated list of all users"""
+    from .crud import get_all_users
+    users = await get_all_users(limit, offset)
+    return users
+
+
+@bitsatcredit_api_router.get(
+    "/api/v1/transactions/recent",
+    name="Recent Transactions",
+    summary="Get recent transactions across all users",
+    response_description="List of recent transactions",
+    response_model=list[Transaction],
+)
+async def api_get_recent_transactions(limit: int = 50) -> list[Transaction]:
+    """Get recent transactions (admin view)"""
+    from .crud import get_recent_transactions
+    transactions = await get_recent_transactions(limit)
+    return transactions
+
+
+@bitsatcredit_api_router.get(
+    "/api/v1/stats",
+    name="System Statistics",
+    summary="Get system-wide statistics",
+    response_description="System stats",
+)
+async def api_get_stats() -> dict:
+    """Get system statistics (admin dashboard)"""
+    from .crud import get_system_stats
+    stats = await get_system_stats()
+    return stats
+
+
 ############################# Health Check #############################
 @bitsatcredit_api_router.get(
     "/api/v1/health",

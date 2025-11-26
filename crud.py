@@ -118,3 +118,52 @@ async def mark_topup_paid(payment_hash: str):
         payment_hash=payment_hash,
         memo=f"Top-up: {topup.amount_sats} sats"
     ))
+
+
+# Admin/Stats operations
+async def get_all_users(limit: int = 100, offset: int = 0) -> list[User]:
+    """Get paginated list of all users"""
+    rows = await db.fetchall(
+        """
+        SELECT * FROM bitsatcredit.users
+        ORDER BY updated_at DESC
+        LIMIT :limit OFFSET :offset
+        """,
+        {"limit": limit, "offset": offset},
+    )
+    return [User(**row) for row in rows]
+
+
+async def get_recent_transactions(limit: int = 50) -> list[Transaction]:
+    """Get recent transactions across all users"""
+    rows = await db.fetchall(
+        """
+        SELECT * FROM bitsatcredit.transactions
+        ORDER BY created_at DESC
+        LIMIT :limit
+        """,
+        {"limit": limit},
+    )
+    return [Transaction(**row) for row in rows]
+
+
+async def get_system_stats() -> dict:
+    """Calculate system-wide statistics"""
+    stats = await db.fetchone(
+        """
+        SELECT
+            COUNT(*) as total_users,
+            COALESCE(SUM(balance_sats), 0) as total_balance,
+            COALESCE(SUM(total_spent), 0) as total_spent,
+            COALESCE(SUM(total_deposited), 0) as total_deposited,
+            COALESCE(SUM(message_count), 0) as total_messages
+        FROM bitsatcredit.users
+        """
+    )
+    return {
+        "total_users": stats["total_users"] if stats else 0,
+        "total_balance": stats["total_balance"] if stats else 0,
+        "total_spent": stats["total_spent"] if stats else 0,
+        "total_deposited": stats["total_deposited"] if stats else 0,
+        "total_messages": stats["total_messages"] if stats else 0,
+    }
