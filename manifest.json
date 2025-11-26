@@ -1,0 +1,9 @@
+{
+  "repos": [
+    {
+      "id": "bitsatcredit",
+      "organisation": "root",
+      "repository": "lnbits-bitsatrelay-credit"
+    }
+  ]
+}

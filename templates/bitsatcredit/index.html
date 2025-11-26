@@ -1,0 +1,362 @@
+<!--/////////////////////////////////////////////////-->
+<!--//PAGE FOR THE EXTENSIONS BACKEND IN LNBITS//////-->
+<!--/////////////////////////////////////////////////-->
+
+
+{% extends "base.html" %}
+
+
+{% from "macros.jinja" import window_vars with context %} {% block scripts %} {{
+window_vars(user) }}
+
+
+<script src="{{ static_url_for('bitsatcredit/static', path='js/index.js') }}"></script>
+
+
+{% endblock %} {% block page %}
+<div class="row q-col-gutter-md">
+  <div class="col-12 col-md-8 col-lg-7 q-gutter-y-md">
+    
+
+    <div class="q-mt-lg">
+      <span class="text-h5">Server</span>
+    </div>
+    <q-card
+      id="serverCard"
+      class="q-mt-xs"
+    >
+      <q-card-section
+        class=""
+      >
+        <div class="row items-center no-wrap q-mb-md">
+          <div class="col">
+            <q-input
+              :label="$t('search')"
+              dense
+              class="q-pr-xl"
+              v-model="serverTable.search"
+            >
+              <template v-slot:before>
+                <q-icon name="search"> </q-icon>
+              </template>
+              <template v-slot:append>
+                <q-icon
+                  v-if="serverTable.search !== ''"
+                  name="close"
+                  @click="serverTable.search = ''"
+                  class="cursor-pointer"
+                >
+                </q-icon>
+              </template>
+            </q-input>
+          </div>
+          <div class="col-auto">
+            
+            <q-btn
+              @click="showNewServerForm()"
+              unelevated
+              split
+              color="primary"
+            >
+              New Server
+            </q-btn>
+            
+            <q-btn
+              flat
+              color="grey"
+              icon="file_download"
+              @click="exportServerCSV"
+              >CSV</q-btn
+            >
+          </div>
+        </div>
+        <q-table
+          dense
+          flat
+          :rows="serverList"
+          row-key="id"
+          :columns="serverTable.columns"
+          v-model:pagination="serverTable.pagination"
+          :loading="serverTable.loading"
+          @request="getServer"
+        >
+          <template v-slot:header="props">
+            <q-tr :props="props">
+              <q-th auto-width></q-th>
+              <q-th v-for="col in props.cols" :key="col.name" :props="props">
+                ${ col.label }
+              </q-th>
+            </q-tr>
+          </template>
+
+          <template v-slot:body="props">
+            <q-tr :props="props">
+              <q-td auto-width>
+                
+                <q-btn
+                  flat
+                  dense
+                  size="xs"
+                  icon="launch"
+                  color="primary"
+                  type="a"
+                  :href="'/bitsatcredit/' + props.row.id"
+                  target="_blank"
+                  class="q-mr-sm"
+                  ><q-tooltip>Open public page</q-tooltip></q-btn
+                >
+                 
+                <q-btn
+                  flat
+                  dense
+                  size="xs"
+                  @click="showEditServerForm(props.row)"
+                  icon="edit"
+                  color="light-blue"
+                  class="q-mr-sm"
+                >
+                  <q-tooltip> Edit </q-tooltip>
+                </q-btn>
+                
+                <q-btn
+                  flat
+                  dense
+                  size="xs"
+                  @click="deleteServer(props.row.id)"
+                  icon="cancel"
+                  color="pink"
+                  class="q-mr-sm"
+                >
+                  <q-tooltip> Delete </q-tooltip>
+                </q-btn>
+              </q-td>
+
+              <q-td v-for="col in props.cols" :key="col.name" :props="props">
+                <div v-if="col.field == 'updated_at'">
+                  <span v-text="dateFromNow(col.value)"> </span>
+                </div>
+                <div v-else>${ col.value }</div>
+              </q-td>
+            </q-tr>
+          </template>
+        </q-table>
+      </q-card-section>
+    </q-card>
+
+    <div class="q-mt-lg">
+      <span class="text-h5">Relay</span>
+    </div>
+    <q-card
+      id="relayCard"
+      class="q-mt-xs"
+    >
+      <q-card-section
+        class=""
+      >
+        <div class="row items-center no-wrap q-mb-md">
+          <div class="col">
+            <q-input
+              :label="$t('search')"
+              dense
+              class="q-pr-xl"
+              v-model="relayTable.search"
+            >
+              <template v-slot:before>
+                <q-icon name="search"> </q-icon>
+              </template>
+              <template v-slot:append>
+                <q-icon
+                  v-if="relayTable.search !== ''"
+                  name="close"
+                  @click="relayTable.search = ''"
+                  class="cursor-pointer"
+                >
+                </q-icon>
+              </template>
+            </q-input>
+          </div>
+          <div class="col-auto">
+            <q-select
+              filled
+              dense
+              v-model="relayFormDialog.server"
+              :options="[{label: 'All Server', value: ''}, ...serverList.map(x => ({label: x.name || x.id, value: x.id}))]"
+              label="Server"
+              class="q-mb-md"
+            ></q-select>
+          </div>
+          <div class="col-auto">
+            <q-btn
+              flat
+              color="grey"
+              icon="file_download"
+              class="q-mb-md"
+              @click="exportRelayCSV"
+              >CSV</q-btn
+            >
+          </div>
+        </div>
+        <q-table
+          dense
+          flat
+          :rows="relayList"
+          row-key="id"
+          :columns="relayTable.columns"
+          v-model:pagination="relayTable.pagination"
+          :loading="relayTable.loading"
+          @request="getRelay"
+        >
+          <template v-slot:header="props">
+            <q-tr :props="props">
+              <q-th auto-width></q-th>
+              <q-th v-for="col in props.cols" :key="col.name" :props="props">
+                ${ col.label }
+              </q-th>
+            </q-tr>
+          </template>
+
+          <template v-slot:body="props">
+            <q-tr :props="props">
+              <q-td auto-width>
+                
+                <q-btn
+                  flat
+                  dense
+                  size="xs"
+                  @click="showEditRelayForm(props.row)"
+                  icon="edit"
+                  color="light-blue"
+                  class="q-mr-sm"
+                >
+                  <q-tooltip> Edit </q-tooltip>
+                </q-btn>
+                
+                <q-btn
+                  flat
+                  dense
+                  size="xs"
+                  @click="deleteRelay(props.row.id)"
+                  icon="cancel"
+                  color="pink"
+                  class="q-mr-sm"
+                >
+                  <q-tooltip> Delete </q-tooltip>
+                </q-btn>
+              </q-td>
+
+              <q-td v-for="col in props.cols" :key="col.name" :props="props">
+                <div v-if="col.field == 'updated_at'">
+                  <span v-text="dateFromNow(col.value)"> </span>
+                </div>
+                <div v-else>${ col.value }</div>
+              </q-td>
+            </q-tr>
+          </template>
+        </q-table>
+      </q-card-section>
+    </q-card>
+  </div>
+  
+  <div class="col-12 col-md-4 col-lg-5 q-gutter-y-md">
+    <q-card>
+      <q-card-section>
+        <h6 class="text-subtitle1 q-my-none">
+          {{SITE_TITLE}} BitSatCredit
+        </h6>
+        <p>BitSatRelay Credits</p>
+      </q-card-section>
+      <q-card-section class="q-pa-none">
+        <q-separator></q-separator>
+        <q-list>
+          {% include "bitsatcredit/_api_docs.html" %}
+          <q-separator></q-separator>
+          {% include "bitsatcredit/_bitsatcredit.html" %}
+        </q-list>
+      </q-card-section>
+    </q-card>
+  </div>
+  
+
+  <!--/////////////////////////////////////////////////-->
+  <!--//////////////FORM DIALOG////////////////////////-->
+  <!--/////////////////////////////////////////////////-->
+
+
+  <q-dialog v-model="serverFormDialog.show" position="top">
+    <q-card
+      v-if="serverFormDialog.show"
+      class="q-pa-lg q-pt-md lnbits__dialog-card q-col-gutter-md"
+    >
+      <span class="text-h5">Server</span>
+
+       
+<q-select
+  filled
+  dense
+  emit-value
+  v-model="serverFormDialog.data.wallet"
+  :options="g.user.walletOptions"
+  label="Wallet  * "
+></q-select>
+  
+<q-input
+  filled
+  dense
+  v-model.trim="serverFormDialog.data.credit"
+  label="Credit"
+  hint=" "
+  type="number"
+></q-input>
+ 
+      <div class="row q-mt-lg">
+        <q-btn @click="saveServer" unelevated color="primary">
+          <span v-if="serverFormDialog.data.id">Update</span>
+          <span v-else>Create</span>
+        </q-btn>
+        <q-btn v-close-popup flat color="grey" class="q-ml-auto">Cancel</q-btn>
+      </div>
+    </q-card>
+  </q-dialog>
+
+  <q-dialog v-model="relayFormDialog.show" position="top">
+    <q-card
+      v-if="relayFormDialog.show"
+      class="q-pa-lg q-pt-md lnbits__dialog-card q-col-gutter-md"
+    >
+      <span class="text-h5">Relay</span>
+
+       
+<q-input
+  filled
+  dense
+  v-model.trim="relayFormDialog.data.npub"
+  label="Npub"
+  hint=" "
+></q-input>
+  
+<q-input
+  filled
+  dense
+  v-model.trim="relayFormDialog.data.sats"
+  label="Sats"
+  hint=" "
+  type="number"
+></q-input>
+  
+<q-checkbox
+  v-model="relayFormDialog.data.paid"
+  label="Paid"
+  hint="   (optional)"
+></q-checkbox>
+ 
+      <div class="row q-mt-lg">
+        <q-btn @click="saveRelay" unelevated color="primary">
+          <span v-if="relayFormDialog.data.id">Update</span>
+          <span v-else>Create</span>
+        </q-btn>
+        <q-btn v-close-popup flat color="grey" class="q-ml-auto">Cancel</q-btn>
+      </div>
+    </q-card>
+  </q-dialog>
+</div>
+{% endblock %}

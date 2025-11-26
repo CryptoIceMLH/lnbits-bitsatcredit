@@ -1,0 +1,144 @@
+{
+    "id": "bitsatcredit",
+    "name": "BitSatCredit",
+    "stub_version": "v0.2.0",
+    "short_description": "BitSatRelay Credits",
+    "description": "Buy Lightning credits for satellite messaging",
+    "owner_data": {
+        "name": "Server",
+        "editable": true,
+        "fields": [
+            {
+                "name": "name_id",
+                "type": "text",
+                "label": "Name",
+                "hint": "",
+                "optional": true,
+                "editable": false,
+                "searchable": true,
+                "sortable": true,
+                "fields": []
+            },
+            {
+                "name": "description_id",
+                "type": "text",
+                "label": "Description",
+                "hint": "",
+                "optional": true,
+                "editable": false,
+                "searchable": true,
+                "sortable": true,
+                "fields": []
+            },
+            {
+                "name": "wallet",
+                "type": "wallet",
+                "label": "Wallet",
+                "hint": "",
+                "optional": false,
+                "editable": true,
+                "searchable": true,
+                "sortable": true,
+                "fields": []
+            },
+            {
+                "name": "credit",
+                "type": "int",
+                "label": "Credit",
+                "hint": "",
+                "optional": false,
+                "editable": true,
+                "searchable": true,
+                "sortable": true,
+                "fields": []
+            }
+        ]
+    },
+    "client_data": {
+        "name": "Relay",
+        "editable": true,
+        "fields": [
+            {
+                "name": "npub",
+                "type": "str",
+                "label": "Npub",
+                "hint": "",
+                "optional": false,
+                "editable": true,
+                "searchable": true,
+                "sortable": true,
+                "fields": []
+            },
+            {
+                "name": "sats",
+                "type": "int",
+                "label": "Sats",
+                "hint": "",
+                "optional": false,
+                "editable": true,
+                "searchable": true,
+                "sortable": true,
+                "fields": []
+            },
+            {
+                "name": "paid",
+                "type": "bool",
+                "label": "Paid",
+                "hint": "",
+                "optional": true,
+                "editable": true,
+                "searchable": true,
+                "sortable": true,
+                "fields": []
+            }
+        ]
+    },
+    "settings_data": {
+        "name": "Settings",
+        "editable": true,
+        "fields": [
+            {
+                "name": "name",
+                "type": "str",
+                "label": "Name",
+                "hint": "",
+                "optional": true,
+                "editable": true,
+                "searchable": true,
+                "sortable": true,
+                "fields": []
+            }
+        ],
+        "enabled": false,
+        "type": "user"
+    },
+    "public_page": {
+        "has_public_page": true,
+        "owner_data_fields": {
+            "name": "name_id",
+            "description": "description_id"
+        },
+        "client_data_fields": {
+            "public_inputs": [
+                "npub",
+                "sats"
+            ]
+        },
+        "action_fields": {
+            "generate_action": true,
+            "generate_payment_logic": true,
+            "wallet_id": "wallet",
+            "currency": "",
+            "amount": "sats",
+            "amount_source": "client_data",
+            "paid_flag": "paid"
+        }
+    },
+    "preview_action": {
+        "is_preview_mode": false,
+        "is_settings_preview": false,
+        "is_owner_data_preview": false,
+        "is_client_data_preview": false,
+        "is_public_page_preview": false
+    }
+}
