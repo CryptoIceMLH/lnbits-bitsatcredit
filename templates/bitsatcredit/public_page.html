@@ -206,9 +206,27 @@
         <p class="q-my-sm">
           Messages are transmitted via satellite using the BitSatRelay system.
         </p>
-        <p class="q-my-sm text-caption">
-          <strong>Nostr Relay:</strong> wss://relay.bitsatrelay.com
-        </p>
+
+        <q-input
+          readonly
+          filled
+          dense
+          value="wss://bitsat.molonlabe.holdings"
+          label="Nostr Relay URL"
+          class="q-mb-md"
+        >
+          <template v-slot:append>
+            <q-btn
+              flat
+              dense
+              icon="content_copy"
+              @click="copyRelayUrl"
+            >
+              <q-tooltip>Copy Relay URL</q-tooltip>
+            </q-btn>
+          </template>
+        </q-input>
+
         <p class="q-my-sm text-caption">
           Connect your Nostr client to this relay to send and receive satellite messages.
           Your npub is used to identify your account for credit deduction.
@@ -401,6 +419,15 @@
         Quasar.Notify.create({
           type: 'positive',
           message: 'Invoice copied to clipboard',
+          timeout: 1000
+        })
+      },
+
+      copyRelayUrl() {
+        navigator.clipboard.writeText('wss://bitsat.molonlabe.holdings')
+        Quasar.Notify.create({
+          type: 'positive',
+          message: 'Relay URL copied to clipboard',
           timeout: 1000
         })
       },
