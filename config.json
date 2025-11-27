@@ -2,7 +2,7 @@
   "name": "BitSatCredit",
   "short_description": "User credit system for BitSatRelay satellite messaging",
   "tile": "/bitsatcredit/static/image/bitsatcredit.png",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "min_lnbits_version": "1.0.0",
   "contributors": [
     {

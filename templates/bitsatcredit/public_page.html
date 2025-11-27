@@ -207,25 +207,24 @@
           Messages are transmitted via satellite using the BitSatRelay system.
         </p>
 
-        <q-input
-          readonly
-          filled
-          dense
-          :value="'wss://bitsat.molonlabe.holdings'"
-          label="Nostr Relay URL"
-          class="q-mb-md"
-        >
-          <template v-slot:append>
+        <div class="q-mb-md">
+          <div class="text-caption text-grey-7 q-mb-xs">Nostr Relay URL</div>
+          <div class="row items-center q-gutter-sm bg-grey-2 q-pa-md rounded-borders">
+            <div class="col text-body1 text-primary" style="font-family: monospace; word-break: break-all;">
+              wss://bitsat.molonlabe.holdings
+            </div>
             <q-btn
               flat
               dense
+              round
               icon="content_copy"
+              color="primary"
               @click="copyRelayUrl"
             >
               <q-tooltip>Copy Relay URL</q-tooltip>
             </q-btn>
-          </template>
-        </q-input>
+          </div>
+        </div>
 
         <p class="q-my-sm text-caption">
           Connect your Nostr client to this relay to send and receive satellite messages.
