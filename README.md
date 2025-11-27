@@ -1,14 +1,16 @@
 # BitSatCredit - LNbits Extension
 
-User credit management system for [BitSatRelay](https://github.com/yourusername/btcsatcoms) satellite messaging relay.
+User credit management system for [BitSatRelay](https://github.com/CryptoIceMLH/lnbits-bitsatcredit) satellite messaging relay.
 
 ## Features
 
-- **User Account Management**: Track user balances by Nostr npub
+- **User Account Management**: Track user balances by Nostr npub (users created only when they top up)
 - **Lightning Payments**: Generate invoices and automatically credit users
 - **Transaction History**: Complete audit trail of deposits and spends
 - **REST API**: Simple API for BitSatRelay to check/spend credits
-- **Web UI**: Users can top up credits and view transaction history
+- **Public Top-Up Page**: Users can top up credits and view balances
+- **Admin Dashboard**: Manage users, view stats, and control system status
+- **System Status Toggle**: Control online/offline status with custom maintenance messages
 - **Automatic Payment Processing**: Payment listener credits users instantly
 
 ## Installation
@@ -20,7 +22,7 @@ User credit management system for [BitSatRelay](https://github.com/yourusername/
 3. Click **Install Extension**
 4. Enter repository URL:
    ```
-   https://gitlab.com/YOURUSERNAME/bitsatcredit
+   https://github.com/CryptoIceMLH/lnbits-bitsatcredit
    ```
 5. Click **Install**
 
@@ -29,7 +31,7 @@ User credit management system for [BitSatRelay](https://github.com/yourusername/
 1. Clone this repository into your LNbits extensions directory:
    ```bash
    cd /path/to/lnbits/lnbits/extensions
-   git clone https://gitlab.com/YOURUSERNAME/bitsatcredit.git
+   git clone https://github.com/CryptoIceMLH/lnbits-bitsatcredit.git bitsatcredit
    ```
 
 2. Restart LNbits:
@@ -37,28 +39,48 @@ User credit management system for [BitSatRelay](https://github.com/yourusername/
    poetry run lnbits
    ```
 
+### Upgrading
+
+To upgrade to a new version:
+1. Uninstall the current extension from LNbits
+2. Reinstall using the latest release from GitHub
+3. Database migrations will run automatically
+
 ## API Endpoints
 
-### User Management
+### User Management (Public)
 
-- `GET /api/v1/user/{npub}` - Get or create user
-- `GET /api/v1/user/{npub}/balance` - Check balance
+- `GET /api/v1/user/{npub}` - Get or create user (creates if doesn't exist)
+- `GET /api/v1/user/{npub}/balance` - Check balance (read-only, doesn't create user)
 - `GET /api/v1/user/{npub}/transactions` - Get transaction history
 
-### Credit Operations
+### Credit Operations (Public)
 
 - `GET /api/v1/user/{npub}/can-spend?amount=X` - Check if user can afford amount
-- `POST /api/v1/user/{npub}/spend?amount=X&memo=Y` - Deduct credits
+- `POST /api/v1/user/{npub}/spend?amount=X&memo=Y` - Deduct credits (called by relay script)
 
-### Top-Up
+### Top-Up (Public)
 
-- `POST /api/v1/user/{npub}/topup` - Generate Lightning invoice
+- `POST /api/v1/topup?wallet_id=XXX` - Generate Lightning invoice (no auth required)
   ```json
   {
     "npub": "npub1...",
     "amount_sats": 100
   }
   ```
+
+### System Status (Public)
+
+- `GET /api/v1/system/status` - Get current system status (online/offline)
+
+### Admin Endpoints (Requires Auth)
+
+- `GET /api/v1/users` - List all users
+- `GET /api/v1/transactions/recent` - Recent transactions across all users
+- `GET /api/v1/stats` - System-wide statistics
+- `POST /api/v1/admin/add-credits` - Manually add credits to user
+- `DELETE /api/v1/admin/user/{npub}` - Delete user and all records
+- `POST /api/v1/admin/system/status` - Set system online/offline status
 
 ### Health Check
 
@@ -92,41 +114,69 @@ User credit management system for [BitSatRelay](https://github.com/yourusername/
 - `paid` - Payment status
 - `created_at`, `paid_at` - Timestamps
 
+### System Settings Table (v1.2.1+)
+- `key` (PRIMARY KEY) - Setting key
+- `value` - Setting value
+- `updated_at` - Last updated timestamp
+
 ## Usage with BitSatRelay
 
-BitSatRelay uses this extension as its database and payment system:
+BitSatRelay relay script uses this extension as its credit system:
 
 ```python
-from lnbits_extension_client import LNbitsExtensionClient
+from bitsatcredit_client import BitSatCreditClient
 
-client = LNbitsExtensionClient(
-    base_url="http://your-lnbits-url/bitsatcredit",
-    api_key=""  # Optional
+# Initialize client
+client = BitSatCreditClient(
+    extension_url="https://your-lnbits-url/bitsatcredit"
 )
 
-# Check balance
-balance = client.get_user_balance("npub1...")
+# Check if user exists and has balance (read-only, doesn't create user)
+user = client.get_user("npub1...")
+if not user:
+    print("User not found - they need to top up first")
+    return
 
 # Check if user can afford message
-can_send = client.can_user_spend("npub1...", amount=1)
-
-# Deduct credits for message send
-if can_send:
+if client.can_spend("npub1...", amount=1):
+    # Deduct credits for message send
     client.spend_credits("npub1...", amount=1, memo="Satellite message")
-
-# Generate top-up invoice
-invoice = client.generate_topup_invoice("npub1...", amount=100)
-print(f"Pay this invoice: {invoice['bolt11']}")
+else:
+    print("Insufficient balance")
 ```
 
-## Payment Flow
+## System Flow
 
-1. User wants to send satellite message
-2. BitSatRelay checks if user has sufficient balance
-3. If insufficient, user tops up via Lightning invoice
-4. **Extension payment listener automatically credits user**
-5. BitSatRelay deducts credits when message is sent
+### User Creation
+- **Users are ONLY created when they top up for the first time**
+- The relay script is read-only - it checks balances but never creates users
+- This prevents orphaned 0-balance user records
+
+### Payment Flow
+
+1. User visits public top-up page
+2. User enters their npub and amount to top up
+3. Extension generates Lightning invoice
+4. User pays invoice
+5. **Extension payment listener automatically credits user account**
+6. User account is created if it doesn't exist
+
+### Message Send Flow
+
+1. User posts message to Nostr relay
+2. BitSatRelay relay script receives message
+3. Relay checks if user exists and has sufficient balance
+4. If balance exists, relay deducts 1 sat and broadcasts message to satellite
+5. If no balance, message is rejected
 6. Transaction history is recorded
+
+### System Status Control
+
+1. Admin toggles system status on admin page
+2. Status is stored in database
+3. Public top-up page shows green "ONLINE" or red "OFFLINE" banner
+4. Optional custom maintenance message displayed to users
+5. **Note**: Actual message processing is controlled by starting/stopping the relay script
 
 ## Configuration
 

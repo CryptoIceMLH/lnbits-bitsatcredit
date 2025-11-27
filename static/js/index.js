@@ -273,11 +273,14 @@ window.app = Vue.createApp({
           this.g.user.wallets[0].adminkey
         )
 
+        // Update both status fields to keep UI in sync
         this.systemStatus = data.status
+        this.systemOnline = data.is_online
+        this.systemStatusMessage = data.message || ''
 
         Quasar.Notify.create({
-          type: this.systemOnline ? 'positive' : 'warning',
-          message: `System is now ${this.systemOnline ? 'ONLINE' : 'OFFLINE'}`,
+          type: data.is_online ? 'positive' : 'warning',
+          message: `System is now ${data.is_online ? 'ONLINE' : 'OFFLINE'}`,
           timeout: 2000
         })
       } catch (error) {
