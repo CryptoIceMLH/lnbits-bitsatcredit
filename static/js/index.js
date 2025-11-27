@@ -45,6 +45,9 @@ window.app = Vue.createApp({
       selectedWallet: null,
       walletOptions: [],
       externalUrl: '',
+      systemStatus: 'online',
+      systemOnline: true,
+      systemStatusMessage: '',
 
       // Add Credits Dialog
       addCreditsDialog: {
@@ -245,6 +248,51 @@ window.app = Vue.createApp({
       })
     },
 
+    async getSystemStatus() {
+      try {
+        const {data} = await LNbits.api.request(
+          'GET',
+          '/bitsatcredit/api/v1/system/status',
+          null
+        )
+        this.systemStatus = data.status
+        this.systemOnline = data.is_online
+        this.systemStatusMessage = data.message || ''
+      } catch (error) {
+        console.error('Error fetching system status:', error)
+      }
+    },
+
+    async toggleSystemStatus() {
+      try {
+        const newStatus = this.systemOnline ? 'online' : 'offline'
+
+        const {data} = await LNbits.api.request(
+          'POST',
+          `/bitsatcredit/api/v1/admin/system/status?status=${newStatus}&message=${encodeURIComponent(this.systemStatusMessage || '')}`,
+          this.g.user.wallets[0].adminkey
+        )
+
+        this.systemStatus = data.status
+
+        Quasar.Notify.create({
+          type: this.systemOnline ? 'positive' : 'warning',
+          message: `System is now ${this.systemOnline ? 'ONLINE' : 'OFFLINE'}`,
+          timeout: 2000
+        })
+      } catch (error) {
+        LNbits.utils.notifyApiError(error)
+        // Revert toggle on error
+        this.systemOnline = !this.systemOnline
+      }
+    },
+
+    async saveStatusMessage() {
+      if (this.systemStatus === 'offline') {
+        await this.toggleSystemStatus()
+      }
+    },
+
     //////////////// Admin Actions ////////////////////////
     showAddCreditsDialog() {
       this.addCreditsDialog = {
@@ -426,6 +474,7 @@ window.app = Vue.createApp({
     await this.getStats()
     await this.getUsers()
     await this.getRecentTransactions()
+    await this.getSystemStatus()
 
     // Load wallet options and settings
     this.loadWalletOptions()

@@ -269,6 +269,56 @@ async def api_update_user_stats(
     return updated_user
 
 
+############################# System Status #############################
+@bitsatcredit_api_router.get(
+    "/api/v1/system/status",
+    name="Get System Status",
+    summary="Get system online/offline status (public)",
+    response_description="System status",
+)
+async def api_get_system_status() -> dict:
+    """Public endpoint to check if system is online or offline"""
+    from lnbits.settings import settings
+
+    # Use extension settings to store status (persists across restarts)
+    ext_id = "bitsatcredit"
+    system_status = settings.get(f"{ext_id}_system_status", "online")
+    status_message = settings.get(f"{ext_id}_status_message", "")
+
+    return {
+        "status": system_status,  # "online" or "offline"
+        "message": status_message,
+        "is_online": system_status == "online"
+    }
+
+
+@bitsatcredit_api_router.post(
+    "/api/v1/admin/system/status",
+    name="Set System Status",
+    summary="Set system online/offline status (admin only)",
+    response_description="Updated system status",
+    dependencies=[Depends(check_admin)],
+)
+async def api_set_system_status(
+    status: str = Query(..., regex="^(online|offline)$"),
+    message: str = Query(""),
+    user: User = Depends(check_user_exists)
+) -> dict:
+    """Admin endpoint to toggle system status"""
+    from lnbits.settings import settings
+
+    ext_id = "bitsatcredit"
+    settings.set(f"{ext_id}_system_status", status)
+    settings.set(f"{ext_id}_status_message", message)
+
+    return {
+        "status": status,
+        "message": message,
+        "is_online": status == "online",
+        "updated": True
+    }
+
+
 ############################# Health Check #############################
 @bitsatcredit_api_router.get(
     "/api/v1/health",

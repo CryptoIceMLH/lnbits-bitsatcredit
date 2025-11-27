@@ -6,6 +6,21 @@
 {% block page %}
 <div class="row q-col-gutter-md justify-center">
   <div class="col-12 col-sm-8 col-md-6 col-lg-5">
+    <!-- System Status Banner -->
+    <q-banner
+      v-if="systemStatus"
+      :class="systemStatus.is_online ? 'bg-positive text-white' : 'bg-negative text-white'"
+      class="q-mb-md"
+    >
+      <template v-slot:avatar>
+        <q-icon :name="systemStatus.is_online ? 'wifi' : 'wifi_off'" color="white"></q-icon>
+      </template>
+      <strong>${ systemStatus.is_online ? '🟢 SYSTEM ONLINE' : '🔴 SYSTEM OFFLINE' }</strong>
+      <div v-if="systemStatus.message" class="q-mt-xs text-caption">
+        ${ systemStatus.message }
+      </div>
+    </q-banner>
+
     <!-- Success State - Payment Confirmed -->
     <q-card v-if="invoicePaid" class="q-pa-lg text-center">
       <q-card-section>
@@ -298,7 +313,8 @@
         balanceCheckNpub: '',
         balanceInfo: null,
         balanceError: '',
-        balanceLoading: false
+        balanceLoading: false,
+        systemStatus: null
       }
     },
     computed: {
@@ -312,6 +328,21 @@
       }
     },
     methods: {
+      async getSystemStatus() {
+        try {
+          const {data} = await LNbits.api.request(
+            'GET',
+            '/bitsatcredit/api/v1/system/status',
+            null
+          )
+          this.systemStatus = data
+        } catch (error) {
+          console.error('Error fetching system status:', error)
+          // Default to online if can't fetch
+          this.systemStatus = { status: 'online', is_online: true, message: '' }
+        }
+      },
+
       async createTopUp() {
         try {
           // Call public endpoint with wallet_id query parameter (no auth required)
@@ -472,7 +503,8 @@
       }
     },
     created: function () {
-      // Initialize form
+      // Initialize form and fetch system status
+      this.getSystemStatus()
     }
   })
 </script>

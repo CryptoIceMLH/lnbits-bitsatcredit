@@ -229,6 +229,46 @@
               <q-icon name="public"></q-icon>
             </template>
           </q-input>
+
+          <q-separator class="q-my-md"></q-separator>
+
+          <!-- System Status Toggle -->
+          <div class="row items-center q-gutter-md">
+            <div class="col">
+              <div class="text-subtitle2">System Status</div>
+              <div class="text-caption text-grey-7">
+                Control if relay script can process messages
+              </div>
+            </div>
+            <div>
+              <q-badge
+                :color="systemStatus === 'online' ? 'positive' : 'negative'"
+                :label="systemStatus === 'online' ? 'ONLINE' : 'OFFLINE'"
+                class="q-mr-sm"
+              ></q-badge>
+              <q-toggle
+                v-model="systemOnline"
+                color="positive"
+                @input="toggleSystemStatus"
+                :icon="systemOnline ? 'wifi' : 'wifi_off'"
+              ></q-toggle>
+            </div>
+          </div>
+
+          <q-input
+            v-if="systemStatus === 'offline'"
+            filled
+            dense
+            v-model="systemStatusMessage"
+            label="Offline Message (optional)"
+            hint="Shown to users on public page"
+            @blur="saveStatusMessage"
+            class="q-mt-sm"
+          >
+            <template v-slot:prepend>
+              <q-icon name="info"></q-icon>
+            </template>
+          </q-input>
         </div>
       </q-card-section>
     </q-card>
