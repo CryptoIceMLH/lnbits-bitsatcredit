@@ -107,8 +107,13 @@ window.app = Vue.createApp({
       const baseUrl = this.externalUrl || window.location.origin
 
       // Use selected wallet or first wallet
-      const walletId = this.selectedWallet?.value ||
-                       (this.g.user?.wallets && this.g.user.wallets.length > 0 ? this.g.user.wallets[0].id : 'YOUR_WALLET_ID')
+      let walletId = 'YOUR_WALLET_ID'
+
+      if (this.selectedWallet?.value) {
+        walletId = this.selectedWallet.value
+      } else if (this.g?.user?.wallets && this.g.user.wallets.length > 0) {
+        walletId = this.g.user.wallets[0].id
+      }
 
       return `${baseUrl}/bitsatcredit/${walletId}`
     }
