@@ -29,7 +29,7 @@ async def public_page(req: Request, wallet_id: str):
         {
             "request": req,
             "wallet_id": wallet_id,
-            "public_page_name": "BitSatCredit Top-Up",
+            "public_page_name": "BitSat Relay Credit System - Powered by LNbits",
             "public_page_description": "Add Lightning credits to your BitSatRelay account"
         }
     )
