@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 # User models
@@ -9,6 +9,8 @@ class CreateUser(BaseModel):
 
 
 class User(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     npub: str
     balance_sats: int = 0
     total_spent: int = 0
@@ -28,6 +30,8 @@ class CreateTransaction(BaseModel):
 
 
 class Transaction(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     npub: str
     type: str
@@ -44,6 +48,8 @@ class CreateTopUp(BaseModel):
 
 
 class TopUpRequest(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     npub: str
     amount_sats: int
@@ -58,3 +64,10 @@ class TopUpPaymentRequest(BaseModel):
     topup_id: str
     payment_hash: str
     bolt11: str
+
+
+# Admin models
+class AdminAddCredits(BaseModel):
+    npub: str
+    amount: int
+    memo: str | None = "Admin credit addition"

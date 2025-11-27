@@ -16,6 +16,7 @@ from .models import (
     CreateTopUp,
     TopUpPaymentRequest,
     Transaction,
+    AdminAddCredits,
 )
 from .services import generate_topup_invoice
 
@@ -195,35 +196,28 @@ async def api_get_stats() -> dict:
     dependencies=[Depends(check_admin)],
 )
 async def api_admin_add_credits(
-    data: dict,
+    data: AdminAddCredits,
     user: User = Depends(check_user_exists)
 ) -> BitSatUser:
     """Admin endpoint to manually add credits to user account"""
-    npub = data.get("npub")
-    amount = data.get("amount")
-    memo = data.get("memo", "Admin credit addition")
-
-    if not npub or not amount:
-        raise HTTPException(HTTPStatus.BAD_REQUEST, "npub and amount required")
-
-    if amount <= 0:
+    if data.amount <= 0:
         raise HTTPException(HTTPStatus.BAD_REQUEST, "Amount must be positive")
 
     # Get or create user
-    user_account = await get_or_create_user(npub)
+    user_account = await get_or_create_user(data.npub)
 
     # Add credits
-    user_account = await update_user_balance(npub, amount)
+    user_account = await update_user_balance(data.npub, data.amount)
 
     # Record transaction
     from .crud import create_transaction
     from .models import CreateTransaction
     await create_transaction(
         CreateTransaction(
-            npub=npub,
+            npub=data.npub,
             type="deposit",
-            amount_sats=amount,
-            memo=memo
+            amount_sats=data.amount,
+            memo=data.memo
         )
     )
 
