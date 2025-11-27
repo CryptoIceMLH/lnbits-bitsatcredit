@@ -27,7 +27,7 @@ async def wait_for_paid_invoices():
 async def on_invoice_paid(payment: Payment) -> None:
     """Process paid invoices - credits user balance automatically"""
 
-    logger.info(f"Payment received: {payment.payment_hash}, tag: {payment.extra.get('tag', 'NO TAG')}, amount: {payment.amount} sats")
+    logger.info(f"Payment received: {payment.payment_hash}, tag: {payment.extra.get('tag', 'NO TAG')}, amount: {payment.amount // 1000} sats ({payment.amount} msat)")
 
     # Check if this payment is for a top-up
     if payment.extra.get("tag") == "bitsatcredit_topup":
@@ -37,7 +37,7 @@ async def on_invoice_paid(payment: Payment) -> None:
             success = await process_topup_payment(payment)
             if success:
                 npub = payment.extra.get("npub", "unknown")
-                logger.info(f"💰 User {npub[:16]}... credited with {payment.amount} sats")
+                logger.info(f"💰 User {npub[:16]}... credited with {payment.amount // 1000} sats")
             else:
                 logger.warning(f"⚠️ Payment not processed (wrong tag or already paid): {payment.payment_hash}")
         except Exception as e:

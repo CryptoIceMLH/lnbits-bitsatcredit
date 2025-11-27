@@ -11,7 +11,7 @@ async def generate_topup_invoice(npub: str, amount_sats: int, wallet_id: str) ->
 
     payment: Payment = await create_invoice(
         wallet_id=wallet_id,
-        amount=amount_sats,
+        amount=amount_sats * 1000,  # LNbits expects millisats
         memo=f"BitSatRelay top-up for {npub[:16]}...",
         extra={"tag": "bitsatcredit_topup", "npub": npub}
     )

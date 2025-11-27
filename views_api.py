@@ -216,12 +216,15 @@ async def api_admin_add_credits(
     user_account = await update_user_balance(npub, amount)
 
     # Record transaction
-    from .crud import add_transaction
-    await add_transaction(
-        npub=npub,
-        transaction_type="deposit",
-        amount_sats=amount,
-        memo=memo
+    from .crud import create_transaction
+    from .models import CreateTransaction
+    await create_transaction(
+        CreateTransaction(
+            npub=npub,
+            type="deposit",
+            amount_sats=amount,
+            memo=memo
+        )
     )
 
     return user_account
