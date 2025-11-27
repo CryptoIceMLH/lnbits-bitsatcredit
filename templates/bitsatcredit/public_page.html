@@ -33,6 +33,9 @@
         <div class="text-body1 q-mt-sm">
           Your account has been credited with <strong>${ topupAmount } sats</strong>
         </div>
+        <div v-if="userBalance !== null" class="text-body2 q-mt-sm text-positive">
+          <strong>New Balance: ${ userBalance } sats</strong>
+        </div>
         <div class="text-caption q-mt-sm text-grey-7">
           Npub: ${ npub.substring(0, 20) }...
         </div>
@@ -92,14 +95,6 @@
 
     <!-- Initial Form State - Enter Details -->
     <q-card v-else class="q-pa-lg">
-      <!-- WIP Warning Banner -->
-      <q-banner class="bg-orange text-white q-mb-md">
-        <template v-slot:avatar>
-          <q-icon name="warning" color="white"></q-icon>
-        </template>
-        <strong>EXPERIMENTAL PLATFORM:</strong> Maximum 100 sats per top-up. Credits may be lost at any time during testing. Use at your own risk.
-      </q-banner>
-
       <q-card-section>
         <div class="text-h5">Top Up Credits</div>
         <div class="text-body2 text-grey-7 q-mt-xs">
@@ -176,6 +171,24 @@
           :disable="!isFormValid"
         ></q-btn>
       </q-card-section>
+
+      <!-- Freedom Communications Banner -->
+      <q-banner class="bg-primary text-white q-mt-md">
+        <div class="text-center">
+          <div class="text-subtitle1"><strong>⚡ FREEDOM COMMUNICATIONS VIA BITCOIN ⚡</strong></div>
+          <div class="text-caption q-mt-xs">
+            BitSatRelay enables censorship-resistant satellite communications for Nostr messages powered by Bitcoin's Lightning Network. No governments, no gatekeepers - just pure peer-to-peer freedom of speech transmitted through space.
+          </div>
+        </div>
+      </q-banner>
+
+      <!-- Experimental Warning -->
+      <q-banner class="bg-orange text-white q-mt-sm">
+        <template v-slot:avatar>
+          <q-icon name="warning" color="white"></q-icon>
+        </template>
+        <strong>EXPERIMENTAL PLATFORM:</strong> Maximum 100 sats per top-up. Credits may be lost at any time during testing. Use at your own risk.
+      </q-banner>
     </q-card>
   </div>
 
@@ -187,6 +200,27 @@
         <p class="q-my-none">
           Top up your Lightning credits to send messages via BitSatRelay satellite network.
         </p>
+      </q-card-section>
+    </q-card>
+
+    <q-card>
+      <q-card-section>
+        <div class="text-subtitle2 q-mb-sm">📊 Network Stats</div>
+        <div v-if="stats" class="q-gutter-y-sm">
+          <div class="row items-center justify-between">
+            <span class="text-caption text-grey-7">Total Users</span>
+            <span class="text-body1"><strong>${ stats.total_users }</strong></span>
+          </div>
+          <q-separator></q-separator>
+          <div class="row items-center justify-between">
+            <span class="text-caption text-grey-7">Messages Sent</span>
+            <span class="text-body1"><strong>${ stats.total_messages }</strong></span>
+          </div>
+        </div>
+        <div v-else class="q-gutter-y-sm">
+          <q-skeleton type="text" />
+          <q-skeleton type="text" />
+        </div>
       </q-card-section>
     </q-card>
 
@@ -249,6 +283,33 @@
           <strong>How to send:</strong> Post a note from any Nostr client connected to the relay.
           The system will automatically deduct 1 sat from your balance and transmit your message via satellite.
         </p>
+        <p class="q-my-sm text-caption">
+          <strong>Relay Bot:</strong> Your relayed messages will be broadcasted from
+          <a href="https://njump.me/npub14uee3fwxjwq7m25gsyqguv2t6v8ft69jax4lvs3skfpa8u7thdsqpu7gam" target="_blank" class="text-primary">
+            npub14uee...7thdsqpu7gam
+          </a>
+        </p>
+
+        <q-expansion-item
+          label="How to Connect Your Nostr Client"
+          icon="help_outline"
+          class="q-mt-md"
+        >
+          <q-card>
+            <q-card-section class="text-caption">
+              <p class="q-my-sm"><strong>Desktop (Nostr clients like Amethyst, Damus, etc.):</strong></p>
+              <ol class="q-pl-md q-my-sm">
+                <li>Open your Nostr client settings</li>
+                <li>Navigate to "Relays" or "Relay Settings"</li>
+                <li>Click "Add Relay"</li>
+                <li>Paste: <code>wss://bitsat.molonlabe.holdings</code></li>
+                <li>Enable both read and write</li>
+              </ol>
+              <p class="q-my-sm"><strong>Web Clients:</strong></p>
+              <p class="q-my-sm">Most web clients like Snort, Iris, and Coracle have a relay management page where you can add custom relays.</p>
+            </q-card-section>
+          </q-card>
+        </q-expansion-item>
       </q-card-section>
     </q-card>
 
@@ -275,11 +336,59 @@
           </template>
         </q-input>
 
-        <div v-if="balanceInfo" class="q-mt-md q-pa-md bg-blue-1 rounded-borders text-blue-9">
-          <div class="text-subtitle2">Balance: <strong>${ balanceInfo.balance_sats } sats</strong></div>
-          <div class="text-caption q-mt-xs">Messages sent: ${ balanceInfo.message_count }</div>
-          <div class="text-caption">Total spent: ${ balanceInfo.total_spent } sats</div>
-          <div class="text-caption">Total deposited: ${ balanceInfo.total_deposited } sats</div>
+        <div v-if="balanceInfo" class="q-mt-md">
+          <div class="q-pa-md bg-blue-1 rounded-borders text-blue-9">
+            <div class="row items-center justify-between">
+              <div class="text-subtitle2">Balance: <strong>${ balanceInfo.balance_sats } sats</strong></div>
+              <q-btn
+                flat
+                dense
+                round
+                size="sm"
+                icon="content_copy"
+                color="blue-9"
+                @click="copyToClipboard(balanceCheckNpub)"
+              >
+                <q-tooltip>Copy npub</q-tooltip>
+              </q-btn>
+            </div>
+            <div class="text-caption q-mt-xs">Messages sent: ${ balanceInfo.message_count }</div>
+            <div class="text-caption">Total spent: ${ balanceInfo.total_spent } sats</div>
+            <div class="text-caption">Total deposited: ${ balanceInfo.total_deposited } sats</div>
+          </div>
+
+          <q-btn
+            v-if="!showTransactions"
+            flat
+            dense
+            label="View Transaction History"
+            icon="history"
+            color="primary"
+            class="q-mt-sm"
+            @click="loadTransactions"
+            :loading="transactionsLoading"
+          />
+
+          <div v-if="showTransactions && transactions.length > 0" class="q-mt-md">
+            <div class="text-caption text-grey-7 q-mb-xs">Recent Transactions</div>
+            <q-list bordered separator class="rounded-borders">
+              <q-item v-for="tx in transactions" :key="tx.id" dense>
+                <q-item-section>
+                  <q-item-label caption>${ tx.memo }</q-item-label>
+                  <q-item-label caption>${ new Date(tx.created_at * 1000).toLocaleString() }</q-item-label>
+                </q-item-section>
+                <q-item-section side>
+                  <q-badge :color="tx.type === 'deposit' ? 'positive' : 'negative'">
+                    ${ tx.type === 'deposit' ? '+' : '-' }${ tx.amount_sats } sats
+                  </q-badge>
+                </q-item-section>
+              </q-item>
+            </q-list>
+          </div>
+
+          <div v-if="showTransactions && transactions.length === 0" class="q-mt-md text-caption text-grey-7">
+            No transactions found
+          </div>
         </div>
 
         <div v-if="balanceError" class="q-mt-md q-pa-md bg-red-1 rounded-borders text-red-8">
@@ -314,7 +423,12 @@
         balanceInfo: null,
         balanceError: '',
         balanceLoading: false,
-        systemStatus: null
+        systemStatus: null,
+        stats: null,
+        userBalance: null,
+        showTransactions: false,
+        transactions: [],
+        transactionsLoading: false
       }
     },
     computed: {
@@ -340,6 +454,19 @@
           console.error('Error fetching system status:', error)
           // Default to online if can't fetch
           this.systemStatus = { status: 'online', is_online: true, message: '' }
+        }
+      },
+
+      async getStats() {
+        try {
+          const {data} = await LNbits.api.request(
+            'GET',
+            '/bitsatcredit/api/v1/stats',
+            null
+          )
+          this.stats = data
+        } catch (error) {
+          console.error('Error fetching stats:', error)
         }
       },
 
@@ -390,7 +517,9 @@
           ws.addEventListener('message', async ({data}) => {
             const payment = JSON.parse(data)
             if (payment.pending === false) {
+              await this.fetchUserBalance()
               this.invoicePaid = true
+              this.balanceCheckNpub = this.npub
 
               Quasar.Notify.create({
                 type: 'positive',
@@ -428,7 +557,9 @@
 
             // If balance increased, payment was received
             if (data.balance_sats >= this.topupAmount) {
+              await this.fetchUserBalance()
               this.invoicePaid = true
+              this.balanceCheckNpub = this.npub
 
               Quasar.Notify.create({
                 type: 'positive',
@@ -462,10 +593,24 @@
         })
       },
 
+      async fetchUserBalance() {
+        try {
+          const {data} = await LNbits.api.request(
+            'GET',
+            `/bitsatcredit/api/v1/user/${this.npub}/balance`,
+            null
+          )
+          this.userBalance = data.balance_sats
+        } catch (error) {
+          console.error('Error fetching user balance:', error)
+        }
+      },
+
       async checkBalance() {
         if (!this.balanceCheckNpub || !this.balanceCheckNpub.startsWith('npub1') || this.balanceCheckNpub.length !== 63) {
           this.balanceError = 'Please enter a valid npub (must start with npub1 and be 63 characters)'
           this.balanceInfo = null
+          this.showTransactions = false
           return
         }
 
@@ -473,6 +618,7 @@
           this.balanceLoading = true
           this.balanceError = ''
           this.balanceInfo = null
+          this.showTransactions = false
 
           const {data} = await LNbits.api.request(
             'GET',
@@ -489,6 +635,27 @@
         }
       },
 
+      async loadTransactions() {
+        try {
+          this.transactionsLoading = true
+          const {data} = await LNbits.api.request(
+            'GET',
+            `/bitsatcredit/api/v1/user/${this.balanceCheckNpub}/transactions`,
+            null
+          )
+          this.transactions = data
+          this.showTransactions = true
+        } catch (error) {
+          console.error('Error loading transactions:', error)
+          Quasar.Notify.create({
+            type: 'negative',
+            message: 'Failed to load transactions'
+          })
+        } finally {
+          this.transactionsLoading = false
+        }
+      },
+
       resetForm() {
         this.topupForm = {
           npub: '',
@@ -500,11 +667,15 @@
         this.invoicePaid = false
         this.npub = ''
         this.topupAmount = 0
+        this.userBalance = null
+        this.showTransactions = false
+        this.transactions = []
       }
     },
     created: function () {
-      // Initialize form and fetch system status
+      // Initialize form and fetch system status and stats
       this.getSystemStatus()
+      this.getStats()
     }
   })
 </script>
