@@ -333,10 +333,10 @@
           <strong>Total Spent:</strong> ${ userDetailsDialog.user.total_spent } sats
         </div>
         <div class="col-12">
-          <strong>Created:</strong> ${ new Date(userDetailsDialog.user.created_at).toLocaleString() }
+          <strong>Created:</strong> ${ new Date(userDetailsDialog.user.created_at * 1000).toLocaleString() }
         </div>
         <div class="col-12">
-          <strong>Last Activity:</strong> ${ new Date(userDetailsDialog.user.updated_at).toLocaleString() }
+          <strong>Last Activity:</strong> ${ new Date(userDetailsDialog.user.updated_at * 1000).toLocaleString() }
         </div>
       </div>
 
@@ -366,6 +366,13 @@
     </q-card-section>
 
     <q-card-actions align="right">
+      <q-btn
+        color="negative"
+        icon="delete"
+        label="Delete User"
+        @click="confirmDeleteUser"
+      ></q-btn>
+      <q-space></q-space>
       <q-btn
         color="primary"
         icon="edit"

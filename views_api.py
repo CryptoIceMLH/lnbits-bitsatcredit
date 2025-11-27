@@ -224,6 +224,51 @@ async def api_admin_add_credits(
     return user_account
 
 
+@bitsatcredit_api_router.delete(
+    "/api/v1/admin/user/{npub}",
+    name="Delete User",
+    summary="Delete user and all related records (admin only)",
+    response_description="Success status",
+    dependencies=[Depends(check_admin)],
+)
+async def api_delete_user(
+    npub: str,
+    user: User = Depends(check_user_exists)
+) -> dict:
+    """Admin endpoint to delete user and all related records"""
+    from .crud import delete_user
+
+    success = await delete_user(npub)
+    return {"success": success, "message": f"User {npub} deleted"}
+
+
+@bitsatcredit_api_router.patch(
+    "/api/v1/admin/user/{npub}/stats",
+    name="Update User Stats",
+    summary="Update user statistics (admin only)",
+    response_description="Updated user",
+    response_model=BitSatUser,
+    dependencies=[Depends(check_admin)],
+)
+async def api_update_user_stats(
+    npub: str,
+    total_spent: int | None = None,
+    total_deposited: int | None = None,
+    message_count: int | None = None,
+    user: User = Depends(check_user_exists)
+) -> BitSatUser:
+    """Admin endpoint to update user statistics"""
+    from .crud import update_user_stats
+
+    updated_user = await update_user_stats(
+        npub=npub,
+        total_spent=total_spent,
+        total_deposited=total_deposited,
+        message_count=message_count
+    )
+    return updated_user
+
+
 ############################# Health Check #############################
 @bitsatcredit_api_router.get(
     "/api/v1/health",

@@ -192,7 +192,7 @@ window.app = Vue.createApp({
 
     //////////////// Utils ////////////////////////
     dateFromNow(date) {
-      return moment(date).fromNow()
+      return moment(date * 1000).fromNow()  // Convert unix timestamp (seconds) to milliseconds
     },
 
     copyPublicUrl() {
@@ -370,6 +370,44 @@ window.app = Vue.createApp({
         this.editBalanceDialog.show = false
         await this.getUsers()
         await this.getStats()
+      } catch (error) {
+        LNbits.utils.notifyApiError(error)
+      }
+    },
+
+    confirmDeleteUser() {
+      if (!this.userDetailsDialog.user) return
+
+      const npub = this.userDetailsDialog.user.npub
+
+      Quasar.Dialog.create({
+        title: 'Confirm Delete',
+        message: `Are you sure you want to delete user ${npub.substring(0, 16)}...? This will delete all transactions and top-up records. This action cannot be undone.`,
+        cancel: true,
+        persistent: true
+      }).onOk(async () => {
+        await this.deleteUser(npub)
+      })
+    },
+
+    async deleteUser(npub) {
+      try {
+        await LNbits.api.request(
+          'DELETE',
+          `/bitsatcredit/api/v1/admin/user/${npub}`,
+          this.g.user.wallets[0].adminkey
+        )
+
+        Quasar.Notify.create({
+          type: 'positive',
+          message: 'User deleted successfully',
+          timeout: 2000
+        })
+
+        this.userDetailsDialog.show = false
+        await this.getUsers()
+        await this.getStats()
+        await this.getRecentTransactions()
       } catch (error) {
         LNbits.utils.notifyApiError(error)
       }

@@ -78,11 +78,11 @@
     <!-- Initial Form State - Enter Details -->
     <q-card v-else class="q-pa-lg">
       <!-- WIP Warning Banner -->
-      <q-banner class="bg-warning text-white q-mb-md">
+      <q-banner class="bg-orange text-white q-mb-md">
         <template v-slot:avatar>
           <q-icon name="warning" color="white"></q-icon>
         </template>
-        <strong>EXPERIMENTAL PLATFORM:</strong> This is a work in progress. Credits may be lost at any time. Use at your own risk.
+        <strong>EXPERIMENTAL PLATFORM:</strong> Maximum 100 sats per top-up. Credits may be lost at any time during testing. Use at your own risk.
       </q-banner>
 
       <q-card-section>
@@ -202,6 +202,26 @@
 
     <q-card>
       <q-card-section>
+        <div class="text-subtitle2 q-mb-sm">Satellite Nostr Relay</div>
+        <p class="q-my-sm">
+          Messages are transmitted via satellite using the BitSatRelay system.
+        </p>
+        <p class="q-my-sm text-caption">
+          <strong>Nostr Relay:</strong> wss://relay.bitsatrelay.com
+        </p>
+        <p class="q-my-sm text-caption">
+          Connect your Nostr client to this relay to send and receive satellite messages.
+          Your npub is used to identify your account for credit deduction.
+        </p>
+        <p class="q-my-sm text-caption">
+          <strong>How to send:</strong> Post a note from any Nostr client connected to the relay.
+          The system will automatically deduct 1 sat from your balance and transmit your message via satellite.
+        </p>
+      </q-card-section>
+    </q-card>
+
+    <q-card>
+      <q-card-section>
         <div class="text-subtitle2 q-mb-sm">Check Balance</div>
         <q-input
           filled
@@ -223,7 +243,7 @@
           </template>
         </q-input>
 
-        <div v-if="balanceInfo" class="q-mt-md q-pa-md bg-blue-1 rounded-borders">
+        <div v-if="balanceInfo" class="q-mt-md q-pa-md bg-blue-1 rounded-borders text-blue-9">
           <div class="text-subtitle2">Balance: <strong>${ balanceInfo.balance_sats } sats</strong></div>
           <div class="text-caption q-mt-xs">Messages sent: ${ balanceInfo.message_count }</div>
           <div class="text-caption">Total spent: ${ balanceInfo.total_spent } sats</div>

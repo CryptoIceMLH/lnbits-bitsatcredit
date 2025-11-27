@@ -202,6 +202,75 @@ async def mark_topup_paid(payment_hash: str):
 
 
 # Admin/Stats operations
+async def delete_user(npub: str) -> bool:
+    """Delete user and all related records"""
+    logger.info(f"🗑️ Deleting user: {npub[:16]}...")
+
+    # Delete transactions
+    await db.execute(
+        "DELETE FROM bitsatcredit.transactions WHERE npub = :npub",
+        {"npub": npub}
+    )
+
+    # Delete top-up requests
+    await db.execute(
+        "DELETE FROM bitsatcredit.topup_requests WHERE npub = :npub",
+        {"npub": npub}
+    )
+
+    # Delete user
+    await db.execute(
+        "DELETE FROM bitsatcredit.users WHERE npub = :npub",
+        {"npub": npub}
+    )
+
+    logger.info(f"✅ User deleted: {npub[:16]}...")
+    return True
+
+
+async def update_user_stats(npub: str, total_spent: int = None, total_deposited: int = None, message_count: int = None) -> User:
+    """Update user statistics (admin function)"""
+    logger.info(f"📝 Updating user stats: {npub[:16]}...")
+
+    user = await get_user(npub)
+    if not user:
+        raise ValueError(f"User {npub} not found")
+
+    # Build update query dynamically
+    updates = []
+    params = {"npub": npub, "updated_at": int(datetime.now(timezone.utc).timestamp())}
+
+    if total_spent is not None:
+        updates.append("total_spent = :total_spent")
+        params["total_spent"] = total_spent
+
+    if total_deposited is not None:
+        updates.append("total_deposited = :total_deposited")
+        params["total_deposited"] = total_deposited
+
+    if message_count is not None:
+        updates.append("message_count = :message_count")
+        params["message_count"] = message_count
+
+    if not updates:
+        return user
+
+    updates.append("updated_at = :updated_at")
+
+    await db.execute(
+        f"""
+        UPDATE bitsatcredit.users
+        SET {", ".join(updates)}
+        WHERE npub = :npub
+        """,
+        params
+    )
+
+    logger.info(f"✅ User stats updated: {npub[:16]}...")
+    return await get_user(npub)
+
+
+
 async def get_all_users(limit: int = 100, offset: int = 0) -> list[User]:
     """Get paginated list of all users"""
     rows = await db.fetchall(
