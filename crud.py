@@ -20,8 +20,14 @@ async def get_user(npub: str) -> User | None:
 
 
 async def create_user(data: CreateUser) -> User:
-    user = User(npub=data.npub, balance_sats=data.initial_balance)
-    await db.insert("bitsatcredit.users", user)
+    user_id = await db.execute(
+        """
+        INSERT INTO bitsatcredit.users (npub, balance_sats)
+        VALUES (:npub, :balance_sats)
+        """,
+        {"npub": data.npub, "balance_sats": data.initial_balance},
+    )
+    user = await get_user(data.npub)
     return user
 
 
@@ -39,31 +45,70 @@ async def update_user_balance(npub: str, amount_delta: int) -> User:
     user = await get_or_create_user(npub)
     old_balance = user.balance_sats
 
-    user.balance_sats += amount_delta
-    if amount_delta > 0:
-        user.total_deposited += amount_delta
-    else:
-        user.total_spent += abs(amount_delta)
+    new_balance = user.balance_sats + amount_delta
+    new_total_deposited = user.total_deposited + (amount_delta if amount_delta > 0 else 0)
+    new_total_spent = user.total_spent + (abs(amount_delta) if amount_delta < 0 else 0)
 
-    await db.update("bitsatcredit.users", user)
+    await db.execute(
+        """
+        UPDATE bitsatcredit.users
+        SET balance_sats = :balance_sats,
+            total_deposited = :total_deposited,
+            total_spent = :total_spent,
+            updated_at = :updated_at
+        WHERE npub = :npub
+        """,
+        {
+            "npub": npub,
+            "balance_sats": new_balance,
+            "total_deposited": new_total_deposited,
+            "total_spent": new_total_spent,
+            "updated_at": int(datetime.now(timezone.utc).timestamp()),
+        },
+    )
 
-    logger.info(f"✅ Balance updated: {npub[:16]}... {old_balance} → {user.balance_sats} sats")
+    logger.info(f"✅ Balance updated: {npub[:16]}... {old_balance} → {new_balance} sats")
 
+    user = await get_user(npub)
     return user
 
 
 async def increment_message_count(npub: str) -> User:
-    user = await get_or_create_user(npub)
-    user.message_count += 1
-    await db.update("bitsatcredit.users", user)
+    await db.execute(
+        """
+        UPDATE bitsatcredit.users
+        SET message_count = message_count + 1,
+            updated_at = :updated_at
+        WHERE npub = :npub
+        """,
+        {"npub": npub, "updated_at": int(datetime.now(timezone.utc).timestamp())},
+    )
+    user = await get_user(npub)
     return user
 
 
 # Transaction operations
 async def create_transaction(data: CreateTransaction) -> Transaction:
-    transaction = Transaction(**data.dict(), id=urlsafe_short_hash())
-    await db.insert("bitsatcredit.transactions", transaction)
-    return transaction
+    tx_id = urlsafe_short_hash()
+    await db.execute(
+        """
+        INSERT INTO bitsatcredit.transactions (id, npub, type, amount_sats, payment_hash, memo)
+        VALUES (:id, :npub, :type, :amount_sats, :payment_hash, :memo)
+        """,
+        {
+            "id": tx_id,
+            "npub": data.npub,
+            "type": data.type,
+            "amount_sats": data.amount_sats,
+            "payment_hash": data.payment_hash,
+            "memo": data.memo,
+        },
+    )
+    row = await db.fetchone(
+        "SELECT * FROM bitsatcredit.transactions WHERE id = :id",
+        {"id": tx_id},
+    )
+    return Transaction(**row)
 
 
 async def get_user_transactions(npub: str) -> list[Transaction]:
@@ -81,15 +126,22 @@ async def get_user_transactions(npub: str) -> list[Transaction]:
 
 # Top-up operations
 async def create_topup_request(npub: str, amount_sats: int, payment_hash: str, bolt11: str) -> TopUpRequest:
-    topup = TopUpRequest(
-        id=urlsafe_short_hash(),
-        npub=npub,
-        amount_sats=amount_sats,
-        payment_hash=payment_hash,
-        bolt11=bolt11,
-        paid=False
+    topup_id = urlsafe_short_hash()
+    await db.execute(
+        """
+        INSERT INTO bitsatcredit.topup_requests (id, npub, amount_sats, payment_hash, bolt11, paid)
+        VALUES (:id, :npub, :amount_sats, :payment_hash, :bolt11, :paid)
+        """,
+        {
+            "id": topup_id,
+            "npub": npub,
+            "amount_sats": amount_sats,
+            "payment_hash": payment_hash,
+            "bolt11": bolt11,
+            "paid": False,
+        },
     )
-    await db.insert("bitsatcredit.topup_requests", topup)
+    topup = await get_topup_by_payment_hash(payment_hash)
     return topup
 
 
@@ -117,8 +169,18 @@ async def mark_topup_paid(payment_hash: str):
     logger.info(f"💾 Marking top-up as paid: {topup.id}, npub: {topup.npub[:16]}..., amount: {topup.amount_sats}")
 
     # Mark paid
-    topup.paid = True
-    await db.update("bitsatcredit.topup_requests", topup)
+    await db.execute(
+        """
+        UPDATE bitsatcredit.topup_requests
+        SET paid = :paid, paid_at = :paid_at
+        WHERE payment_hash = :payment_hash
+        """,
+        {
+            "paid": True,
+            "paid_at": int(datetime.now(timezone.utc).timestamp()),
+            "payment_hash": payment_hash,
+        },
+    )
 
     logger.info(f"💰 Updating user balance: {topup.npub[:16]}... +{topup.amount_sats} sats")
 
