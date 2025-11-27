@@ -12,11 +12,11 @@ db = Database("ext_bitsatcredit")
 
 # User operations
 async def get_user(npub: str) -> User | None:
-    return await db.fetchone(
+    row = await db.fetchone(
         "SELECT * FROM bitsatcredit.users WHERE npub = :npub",
         {"npub": npub},
-        User,
     )
+    return User(**row) if row else None
 
 
 async def create_user(data: CreateUser) -> User:
@@ -40,13 +40,11 @@ async def update_user_balance(npub: str, amount_delta: int) -> User:
     old_balance = user.balance_sats
 
     user.balance_sats += amount_delta
-
     if amount_delta > 0:
         user.total_deposited += amount_delta
     else:
         user.total_spent += abs(amount_delta)
 
-    user.updated_at = datetime.now(timezone.utc)
     await db.update("bitsatcredit.users", user)
 
     logger.info(f"✅ Balance updated: {npub[:16]}... {old_balance} → {user.balance_sats} sats")
@@ -57,7 +55,6 @@ async def update_user_balance(npub: str, amount_delta: int) -> User:
 async def increment_message_count(npub: str) -> User:
     user = await get_or_create_user(npub)
     user.message_count += 1
-    user.updated_at = datetime.now(timezone.utc)
     await db.update("bitsatcredit.users", user)
     return user
 
@@ -97,11 +94,11 @@ async def create_topup_request(npub: str, amount_sats: int, payment_hash: str, b
 
 
 async def get_topup_by_payment_hash(payment_hash: str) -> TopUpRequest | None:
-    return await db.fetchone(
+    row = await db.fetchone(
         "SELECT * FROM bitsatcredit.topup_requests WHERE payment_hash = :payment_hash",
         {"payment_hash": payment_hash},
-        TopUpRequest,
     )
+    return TopUpRequest(**row) if row else None
 
 
 async def mark_topup_paid(payment_hash: str):
@@ -121,7 +118,6 @@ async def mark_topup_paid(payment_hash: str):
 
     # Mark paid
     topup.paid = True
-    topup.paid_at = datetime.now(timezone.utc)
     await db.update("bitsatcredit.topup_requests", topup)
 
     logger.info(f"💰 Updating user balance: {topup.npub[:16]}... +{topup.amount_sats} sats")

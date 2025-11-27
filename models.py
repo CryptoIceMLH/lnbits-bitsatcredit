@@ -9,15 +9,15 @@ class CreateUser(BaseModel):
 
 
 class User(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, arbitrary_types_allowed=True, extra='ignore')
 
     npub: str
     balance_sats: int = 0
     total_spent: int = 0
     total_deposited: int = 0
     message_count: int = 0
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: int | None = None
+    updated_at: int | None = None
 
 
 # Transaction models
@@ -30,7 +30,7 @@ class CreateTransaction(BaseModel):
 
 
 class Transaction(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, arbitrary_types_allowed=True, extra='ignore')
 
     id: str
     npub: str
@@ -38,7 +38,7 @@ class Transaction(BaseModel):
     amount_sats: int
     payment_hash: str | None
     memo: str | None
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: int | None = None
 
 
 # Top-up request models
@@ -48,7 +48,7 @@ class CreateTopUp(BaseModel):
 
 
 class TopUpRequest(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, arbitrary_types_allowed=True, extra='ignore')
 
     id: str
     npub: str
@@ -56,8 +56,8 @@ class TopUpRequest(BaseModel):
     payment_hash: str
     bolt11: str
     paid: bool = False
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    paid_at: datetime | None = None
+    created_at: int | None = None
+    paid_at: int | None = None
 
 
 class TopUpPaymentRequest(BaseModel):
