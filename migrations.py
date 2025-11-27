@@ -74,3 +74,24 @@ async def m004_satellite_messages(db):
         );
         """
     )
+
+
+async def m005_system_settings(db):
+    """System settings table for extension configuration"""
+    await db.execute(
+        f"""
+        CREATE TABLE bitsatcredit.system_settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL,
+            updated_at TIMESTAMP NOT NULL DEFAULT {db.timestamp_now}
+        );
+        """
+    )
+
+    # Insert default system status
+    await db.execute(
+        """
+        INSERT INTO bitsatcredit.system_settings (key, value)
+        VALUES ('system_status', 'online'), ('status_message', '');
+        """
+    )

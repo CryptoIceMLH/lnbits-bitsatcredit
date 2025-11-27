@@ -317,3 +317,29 @@ async def get_system_stats() -> dict:
         "total_deposited": stats["total_deposited"] if stats else 0,
         "total_messages": stats["total_messages"] if stats else 0,
     }
+
+
+# System settings operations
+async def get_setting(key: str, default: str = "") -> str:
+    """Get system setting value"""
+    row = await db.fetchone(
+        "SELECT value FROM bitsatcredit.system_settings WHERE key = :key",
+        {"key": key},
+    )
+    return row["value"] if row else default
+
+
+async def set_setting(key: str, value: str):
+    """Set system setting value (upsert)"""
+    await db.execute(
+        """
+        INSERT INTO bitsatcredit.system_settings (key, value, updated_at)
+        VALUES (:key, :value, :updated_at)
+        ON CONFLICT(key) DO UPDATE SET value = :value, updated_at = :updated_at
+        """,
+        {
+            "key": key,
+            "value": value,
+            "updated_at": int(datetime.now(timezone.utc).timestamp()),
+        },
+    )

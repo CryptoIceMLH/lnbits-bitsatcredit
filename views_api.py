@@ -278,12 +278,10 @@ async def api_update_user_stats(
 )
 async def api_get_system_status() -> dict:
     """Public endpoint to check if system is online or offline"""
-    from lnbits.settings import settings
+    from .crud import get_setting
 
-    # Use extension settings to store status (persists across restarts)
-    ext_id = "bitsatcredit"
-    system_status = settings.get(f"{ext_id}_system_status", "online")
-    status_message = settings.get(f"{ext_id}_status_message", "")
+    system_status = await get_setting("system_status", "online")
+    status_message = await get_setting("status_message", "")
 
     return {
         "status": system_status,  # "online" or "offline"
@@ -305,11 +303,10 @@ async def api_set_system_status(
     user: User = Depends(check_user_exists)
 ) -> dict:
     """Admin endpoint to toggle system status"""
-    from lnbits.settings import settings
+    from .crud import set_setting
 
-    ext_id = "bitsatcredit"
-    settings.set(f"{ext_id}_system_status", status)
-    settings.set(f"{ext_id}_status_message", message)
+    await set_setting("system_status", status)
+    await set_setting("status_message", message)
 
     return {
         "status": status,
