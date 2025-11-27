@@ -263,9 +263,9 @@ window.app = Vue.createApp({
       }
     },
 
-    async toggleSystemStatus() {
+    async toggleSystemStatus(newValue) {
       try {
-        const newStatus = this.systemOnline ? 'online' : 'offline'
+        const newStatus = newValue ? 'online' : 'offline'
 
         const {data} = await LNbits.api.request(
           'POST',

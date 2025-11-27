@@ -249,7 +249,7 @@
               <q-toggle
                 v-model="systemOnline"
                 color="positive"
-                @input="toggleSystemStatus"
+                @update:model-value="toggleSystemStatus"
                 :icon="systemOnline ? 'wifi' : 'wifi_off'"
               ></q-toggle>
             </div>
