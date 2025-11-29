@@ -2,7 +2,7 @@
 
 All notable changes to the BitSatCredit LNbits extension will be documented in this file.
 
-## [v1.4.0] - 2025-11-29
+## [v1.5.0] - 2025-11-29
 
 ### Added - Admin Dashboard
 - **Configurable Pricing**: Price per message is now configurable via admin settings (no longer hardcoded at 1 sat)
