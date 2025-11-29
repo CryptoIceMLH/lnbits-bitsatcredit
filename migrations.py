@@ -98,17 +98,26 @@ async def m005_system_settings(db):
 
 
 async def m006_add_user_memo(db):
-    """Add memo column to users table for admin notes (v1.4.0)"""
-    await db.execute(
-        """
-        ALTER TABLE bitsatcredit.users ADD COLUMN memo TEXT;
-        """
-    )
+    """Add memo column to users table for admin notes (v1.5.0)"""
+    # Add memo column - ignore if already exists
+    try:
+        await db.execute(
+            """
+            ALTER TABLE bitsatcredit.users ADD COLUMN memo TEXT;
+            """
+        )
+    except Exception:
+        # Column already exists from previous migration attempt
+        pass
 
-    # Insert default price_per_message setting
-    await db.execute(
-        """
-        INSERT INTO bitsatcredit.system_settings (key, value)
-        VALUES ('price_per_message', '1');
-        """
-    )
+    # Insert default price_per_message setting - ignore if already exists
+    try:
+        await db.execute(
+            """
+            INSERT INTO bitsatcredit.system_settings (key, value)
+            VALUES ('price_per_message', '1');
+            """
+        )
+    except Exception:
+        # Setting already exists from previous migration attempt
+        pass
