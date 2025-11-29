@@ -9,9 +9,9 @@
 {% block page %}
 <div class="row q-col-gutter-md justify-center">
   <div class="col-12 col-sm-8 col-md-6 col-lg-5">
-    <!-- System Status - Small Edge Indicator -->
-    <div v-if="systemStatus" class="row q-mb-md">
-      <div class="col-auto">
+    <!-- System Status and Nostr Relay - Top Info Bar -->
+    <div class="row q-mb-md items-center">
+      <div v-if="systemStatus" class="col-auto">
         <q-badge
           :color="systemStatus.is_online ? 'positive' : 'negative'"
           :label="systemStatus.is_online ? 'ONLINE' : 'OFFLINE'"
@@ -20,8 +20,22 @@
           <q-icon :name="systemStatus.is_online ? 'wifi' : 'wifi_off'" left />
         </q-badge>
       </div>
-      <div v-if="systemStatus.message" class="col q-pl-sm text-caption self-center">
-        ${ systemStatus.message }
+      <div class="col q-pl-md">
+        <div class="row items-center q-gutter-xs">
+          <span class="text-caption text-grey-7">Nostr Relay:</span>
+          <span class="text-caption text-primary" style="font-family: monospace;">wss://bitsat.molonlabe.holdings</span>
+          <q-btn
+            flat
+            dense
+            round
+            size="xs"
+            icon="content_copy"
+            color="primary"
+            @click="copyRelayUrl"
+          >
+            <q-tooltip>Copy Relay URL</q-tooltip>
+          </q-btn>
+        </div>
       </div>
     </div>
 
@@ -375,61 +389,6 @@
             </div>
           </div>
         </div>
-      </q-card-section>
-    </q-card>
-
-    <!-- Satellite Relay Info -->
-    <q-card>
-      <q-card-section class="q-pa-sm">
-        <div class="text-subtitle2 q-mb-xs">Nostr Relay</div>
-        <p class="q-my-xs text-caption">
-          Connect your Nostr client to receive satellite messages and send via satellite.
-        </p>
-
-        <div class="q-mb-sm">
-          <div class="row items-center q-gutter-xs bg-grey-2 q-pa-xs rounded-borders">
-            <div class="col text-caption text-primary" style="font-family: monospace; word-break: break-all;">
-              wss://bitsat.molonlabe.holdings
-            </div>
-            <q-btn
-              flat
-              dense
-              round
-              size="xs"
-              icon="content_copy"
-              color="primary"
-              @click="copyRelayUrl"
-            >
-              <q-tooltip>Copy Relay URL</q-tooltip>
-            </q-btn>
-          </div>
-        </div>
-
-        <p class="q-my-xs text-caption">
-          <strong>Relay Bot:</strong>
-          <a href="https://njump.me/npub14uee3fwxjwq7m25gsyqguv2t6v8ft69jax4lvs3skfpa8u7thdsqpu7gam" target="_blank" class="text-primary">
-            npub14uee...pu7gam
-          </a>
-        </p>
-
-        <q-expansion-item
-          dense
-          label="How to Connect"
-          icon="help_outline"
-          class="q-mt-xs"
-        >
-          <q-card>
-            <q-card-section class="text-caption q-pa-xs">
-              <p class="q-my-xs"><strong>Nostr Clients:</strong></p>
-              <ol class="q-pl-md q-my-xs">
-                <li>Open client settings</li>
-                <li>Navigate to "Relays"</li>
-                <li>Add: <code>wss://bitsat.molonlabe.holdings</code></li>
-                <li>Enable read and write</li>
-              </ol>
-            </q-card-section>
-          </q-card>
-        </q-expansion-item>
       </q-card-section>
     </q-card>
 
