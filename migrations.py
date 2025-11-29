@@ -105,10 +105,10 @@ async def m006_add_user_memo(db):
         """
     )
 
-    # Insert default price_per_message setting
+    # Insert default price_per_message setting if not exists
     await db.execute(
         """
-        INSERT INTO bitsatcredit.system_settings (key, value)
+        INSERT OR IGNORE INTO bitsatcredit.system_settings (key, value)
         VALUES ('price_per_message', '1');
         """
     )
