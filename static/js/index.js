@@ -14,6 +14,8 @@ window.app = Vue.createApp({
 
       // User Management
       userList: [],
+      selectedUsers: [],
+      selectAll: false,
       userTable: {
         search: '',
         loading: false,
@@ -23,6 +25,7 @@ window.app = Vue.createApp({
           {name: 'total_spent', align: 'right', label: 'Total Spent', field: 'total_spent', sortable: true},
           {name: 'total_deposited', align: 'right', label: 'Total Deposited', field: 'total_deposited', sortable: true},
           {name: 'message_count', align: 'right', label: 'Messages', field: 'message_count', sortable: true},
+          {name: 'memo', align: 'left', label: 'Memo', field: 'memo', sortable: true},
           {name: 'updated_at', align: 'left', label: 'Last Activity', field: 'updated_at', sortable: true}
         ],
         pagination: {
@@ -45,6 +48,7 @@ window.app = Vue.createApp({
       selectedWallet: null,
       walletOptions: [],
       externalUrl: '',
+      pricePerMessage: 1,
       systemStatus: 'online',
       systemOnline: true,
       systemStatusMessage: '',
@@ -70,6 +74,20 @@ window.app = Vue.createApp({
         npub: '',
         currentBalance: 0,
         newBalance: 0,
+        memo: ''
+      },
+
+      // Edit Memo Dialog
+      editMemoDialog: {
+        show: false,
+        npub: '',
+        memo: ''
+      },
+
+      // Bulk Add Credits Dialog
+      bulkAddCreditsDialog: {
+        show: false,
+        amount: null,
         memo: ''
       },
 
@@ -102,14 +120,13 @@ window.app = Vue.createApp({
       }
       const search = this.userTable.search.toLowerCase()
       return this.userList.filter(user =>
-        user.npub.toLowerCase().includes(search)
+        user.npub.toLowerCase().includes(search) ||
+        (user.memo && user.memo.toLowerCase().includes(search))
       )
     },
     publicPageUrl() {
-      // Use external URL if configured, otherwise use current origin
       const baseUrl = this.externalUrl || window.location.origin
 
-      // Use selected wallet or first wallet
       let walletId = 'YOUR_WALLET_ID'
 
       if (this.selectedWallet?.value) {
@@ -160,7 +177,6 @@ window.app = Vue.createApp({
         this.userDetailsDialog.user = user
         this.userDetailsDialog.show = true
 
-        // Fetch user's transaction history
         const {data} = await LNbits.api.request(
           'GET',
           `/bitsatcredit/api/v1/user/${user.npub}/transactions`,
@@ -178,6 +194,14 @@ window.app = Vue.createApp({
         this.userList,
         'bitsatcredit_users_' + new Date().toISOString().slice(0, 10) + '.csv'
       )
+    },
+
+    toggleSelectAll(value) {
+      if (value) {
+        this.selectedUsers = this.filteredUsers.map(u => u.npub)
+      } else {
+        this.selectedUsers = []
+      }
     },
 
     //////////////// Transactions ////////////////////////
@@ -200,7 +224,7 @@ window.app = Vue.createApp({
 
     //////////////// Utils ////////////////////////
     dateFromNow(date) {
-      return moment(date * 1000).fromNow()  // Convert unix timestamp (seconds) to milliseconds
+      return moment(date * 1000).fromNow()
     },
 
     copyPublicUrl() {
@@ -219,7 +243,6 @@ window.app = Vue.createApp({
           label: w.name,
           value: w.id
         }))
-        // Set first wallet as default
         if (this.walletOptions.length > 0 && !this.selectedWallet) {
           this.selectedWallet = this.walletOptions[0]
         }
@@ -227,7 +250,6 @@ window.app = Vue.createApp({
     },
 
     async saveWalletSetting() {
-      // Store wallet preference in localStorage
       if (this.selectedWallet) {
         localStorage.setItem('bitsatcredit_wallet_id', this.selectedWallet.value)
         Quasar.Notify.create({
@@ -239,13 +261,54 @@ window.app = Vue.createApp({
     },
 
     async saveExternalUrl() {
-      // Store external URL in localStorage
       localStorage.setItem('bitsatcredit_external_url', this.externalUrl || '')
       Quasar.Notify.create({
         type: 'positive',
         message: 'External URL saved',
         timeout: 1000
       })
+    },
+
+    async getPricePerMessage() {
+      try {
+        const {data} = await LNbits.api.request(
+          'GET',
+          '/bitsatcredit/api/v1/settings/price',
+          null
+        )
+        this.pricePerMessage = data.price_per_message_sats
+      } catch (error) {
+        console.error('Error fetching price:', error)
+        this.pricePerMessage = 1
+      }
+    },
+
+    async savePriceSetting() {
+      try {
+        if (this.pricePerMessage < 1) {
+          Quasar.Notify.create({
+            type: 'warning',
+            message: 'Price must be at least 1 sat',
+            timeout: 2000
+          })
+          this.pricePerMessage = 1
+          return
+        }
+
+        const {data} = await LNbits.api.request(
+          'POST',
+          `/bitsatcredit/api/v1/admin/settings/price?price_sats=${this.pricePerMessage}`,
+          this.g.user.wallets[0].adminkey
+        )
+
+        Quasar.Notify.create({
+          type: 'positive',
+          message: `Price updated to ${data.price_per_message_sats} sat per message`,
+          timeout: 2000
+        })
+      } catch (error) {
+        LNbits.utils.notifyApiError(error)
+      }
     },
 
     async getSystemStatus() {
@@ -273,7 +336,6 @@ window.app = Vue.createApp({
           this.g.user.wallets[0].adminkey
         )
 
-        // Update both status fields to keep UI in sync
         this.systemStatus = data.status
         this.systemOnline = data.is_online
         this.systemStatusMessage = data.message || ''
@@ -285,7 +347,6 @@ window.app = Vue.createApp({
         })
       } catch (error) {
         LNbits.utils.notifyApiError(error)
-        // Revert toggle on error
         this.systemOnline = !this.systemOnline
       }
     },
@@ -308,7 +369,6 @@ window.app = Vue.createApp({
 
     async addCreditsToUser() {
       try {
-        // Use the spend endpoint with negative amount to add credits
         const {data} = await LNbits.api.request(
           'POST',
           `/bitsatcredit/api/v1/admin/add-credits`,
@@ -344,14 +404,12 @@ window.app = Vue.createApp({
 
     async createNewUser() {
       try {
-        // Get or create user
         const {data: user} = await LNbits.api.request(
           'GET',
           `/bitsatcredit/api/v1/user/${this.createUserDialog.npub}`,
           null
         )
 
-        // If initial balance > 0, add credits
         if (this.createUserDialog.initialBalance > 0) {
           await LNbits.api.request(
             'POST',
@@ -431,6 +489,83 @@ window.app = Vue.createApp({
       }
     },
 
+    editUserMemo(user) {
+      this.editMemoDialog = {
+        show: true,
+        npub: user.npub,
+        memo: user.memo || ''
+      }
+    },
+
+    async saveUserMemo() {
+      try {
+        const {data} = await LNbits.api.request(
+          'POST',
+          `/bitsatcredit/api/v1/admin/user/${this.editMemoDialog.npub}/memo?memo=${encodeURIComponent(this.editMemoDialog.memo)}`,
+          this.g.user.wallets[0].adminkey
+        )
+
+        Quasar.Notify.create({
+          type: 'positive',
+          message: 'Memo updated successfully',
+          timeout: 2000
+        })
+
+        this.editMemoDialog.show = false
+        await this.getUsers()
+      } catch (error) {
+        LNbits.utils.notifyApiError(error)
+      }
+    },
+
+    showBulkAddCreditsDialog() {
+      this.bulkAddCreditsDialog = {
+        show: true,
+        amount: null,
+        memo: 'Bulk credit addition'
+      }
+    },
+
+    async bulkAddCreditsToUsers() {
+      try {
+        let successCount = 0
+        let failCount = 0
+
+        for (const npub of this.selectedUsers) {
+          try {
+            await LNbits.api.request(
+              'POST',
+              `/bitsatcredit/api/v1/admin/add-credits`,
+              this.g.user.wallets[0].adminkey,
+              {
+                npub: npub,
+                amount: this.bulkAddCreditsDialog.amount,
+                memo: this.bulkAddCreditsDialog.memo || 'Bulk credit addition'
+              }
+            )
+            successCount++
+          } catch (error) {
+            console.error(`Failed to add credits to ${npub}:`, error)
+            failCount++
+          }
+        }
+
+        Quasar.Notify.create({
+          type: 'positive',
+          message: `Added ${this.bulkAddCreditsDialog.amount} sats to ${successCount} user(s)${failCount > 0 ? `, ${failCount} failed` : ''}`,
+          timeout: 3000
+        })
+
+        this.bulkAddCreditsDialog.show = false
+        this.selectedUsers = []
+        this.selectAll = false
+        await this.getUsers()
+        await this.getStats()
+      } catch (error) {
+        LNbits.utils.notifyApiError(error)
+      }
+    },
+
     confirmDeleteUser() {
       if (!this.userDetailsDialog.user) return
 
@@ -478,8 +613,8 @@ window.app = Vue.createApp({
     await this.getUsers()
     await this.getRecentTransactions()
     await this.getSystemStatus()
+    await this.getPricePerMessage()
 
-    // Load wallet options and settings
     this.loadWalletOptions()
     const savedWalletId = localStorage.getItem('bitsatcredit_wallet_id')
     if (savedWalletId) {

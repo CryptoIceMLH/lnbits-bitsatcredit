@@ -99,7 +99,16 @@
         >
           <template v-slot:header="props">
             <q-tr :props="props">
-              <q-th auto-width></q-th>
+              <q-th auto-width>
+                <q-checkbox
+                  v-model="selectAll"
+                  @update:model-value="toggleSelectAll"
+                  size="xs"
+                  dense
+                >
+                  <q-tooltip>Select All</q-tooltip>
+                </q-checkbox>
+              </q-th>
               <q-th v-for="col in props.cols" :key="col.name" :props="props">
                 ${ col.label }
               </q-th>
@@ -109,6 +118,13 @@
           <template v-slot:body="props">
             <q-tr :props="props">
               <q-td auto-width>
+                <q-checkbox
+                  v-model="selectedUsers"
+                  :val="props.row.npub"
+                  size="xs"
+                  dense
+                  class="q-mr-xs"
+                />
                 <q-btn
                   flat
                   dense
@@ -135,6 +151,22 @@
               </q-td>
               <q-td key="message_count" :props="props">
                 ${ props.row.message_count }
+              </q-td>
+              <q-td key="memo" :props="props">
+                <div class="row items-center no-wrap">
+                  <span class="col-auto q-mr-xs">${ props.row.memo || '-' }</span>
+                  <q-btn
+                    flat
+                    dense
+                    round
+                    size="xs"
+                    icon="edit"
+                    color="grey-7"
+                    @click="editUserMemo(props.row)"
+                  >
+                    <q-tooltip>Edit Memo</q-tooltip>
+                  </q-btn>
+                </div>
               </q-td>
               <q-td key="updated_at" :props="props">
                 ${ dateFromNow(props.row.updated_at) }
@@ -230,6 +262,21 @@
             </template>
           </q-input>
 
+          <q-input
+            filled
+            dense
+            v-model.number="pricePerMessage"
+            type="number"
+            label="Price Per Message (sats)"
+            hint="Cost per satellite message"
+            :rules="[val => val >= 1 || 'Minimum 1 sat']"
+            @blur="savePriceSetting"
+          >
+            <template v-slot:prepend>
+              <q-icon name="attach_money"></q-icon>
+            </template>
+          </q-input>
+
           <q-separator class="q-my-md"></q-separator>
 
           <!-- System Status Toggle -->
@@ -291,6 +338,14 @@
             label="Create User"
             class="full-width"
             @click="showCreateUserDialog"
+          ></q-btn>
+          <q-btn
+            v-if="selectedUsers.length > 0"
+            color="accent"
+            icon="group_add"
+            :label="'Bulk Add Credits (' + selectedUsers.length + ')'"
+            class="full-width"
+            @click="showBulkAddCreditsDialog"
           ></q-btn>
         </div>
       </q-card-section>
@@ -577,6 +632,93 @@
         color="primary"
         label="Update Balance"
         @click="updateUserBalance"
+      ></q-btn>
+    </q-card-actions>
+  </q-card>
+</q-dialog>
+
+<!-- Edit Memo Dialog -->
+<q-dialog v-model="editMemoDialog.show">
+  <q-card style="min-width: 400px">
+    <q-card-section>
+      <div class="text-h6">Edit User Memo</div>
+    </q-card-section>
+
+    <q-card-section class="q-pt-none">
+      <div class="q-mb-md text-caption">
+        User: ${ editMemoDialog.npub }
+      </div>
+
+      <q-input
+        filled
+        v-model="editMemoDialog.memo"
+        label="Memo/Note"
+        hint="Admin note for this user"
+        type="textarea"
+        rows="3"
+      >
+        <template v-slot:prepend>
+          <q-icon name="notes"></q-icon>
+        </template>
+      </q-input>
+    </q-card-section>
+
+    <q-card-actions align="right">
+      <q-btn flat label="Cancel" v-close-popup></q-btn>
+      <q-btn
+        color="primary"
+        label="Save Memo"
+        @click="saveUserMemo"
+      ></q-btn>
+    </q-card-actions>
+  </q-card>
+</q-dialog>
+
+<!-- Bulk Add Credits Dialog -->
+<q-dialog v-model="bulkAddCreditsDialog.show">
+  <q-card style="min-width: 400px">
+    <q-card-section>
+      <div class="text-h6">Bulk Add Credits</div>
+    </q-card-section>
+
+    <q-card-section class="q-pt-none">
+      <div class="q-mb-md">
+        Adding credits to <strong>${ selectedUsers.length }</strong> selected user(s)
+      </div>
+
+      <q-input
+        filled
+        v-model.number="bulkAddCreditsDialog.amount"
+        type="number"
+        label="Amount (sats)"
+        hint="Amount of credits to add to each user"
+        :rules="[val => val > 0 || 'Amount must be positive']"
+      >
+        <template v-slot:prepend>
+          <q-icon name="add_circle"></q-icon>
+        </template>
+      </q-input>
+
+      <q-input
+        filled
+        v-model="bulkAddCreditsDialog.memo"
+        label="Memo (optional)"
+        hint="Reason for bulk credit addition"
+        class="q-mt-md"
+      >
+        <template v-slot:prepend>
+          <q-icon name="notes"></q-icon>
+        </template>
+      </q-input>
+    </q-card-section>
+
+    <q-card-actions align="right">
+      <q-btn flat label="Cancel" v-close-popup></q-btn>
+      <q-btn
+        color="primary"
+        label="Add Credits to Selected"
+        @click="bulkAddCreditsToUsers"
+        :disable="!bulkAddCreditsDialog.amount || bulkAddCreditsDialog.amount <= 0"
       ></q-btn>
     </q-card-actions>
   </q-card>

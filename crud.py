@@ -343,3 +343,28 @@ async def set_setting(key: str, value: str):
             "updated_at": int(datetime.now(timezone.utc).timestamp()),
         },
     )
+
+
+async def set_user_memo(npub: str, memo: str) -> User:
+    """Set admin memo/note for user"""
+    logger.info(f"📝 Setting memo for user: {npub[:16]}...")
+
+    user = await get_user(npub)
+    if not user:
+        raise ValueError(f"User {npub} not found")
+
+    await db.execute(
+        """
+        UPDATE bitsatcredit.users
+        SET memo = :memo, updated_at = :updated_at
+        WHERE npub = :npub
+        """,
+        {
+            "npub": npub,
+            "memo": memo,
+            "updated_at": int(datetime.now(timezone.utc).timestamp()),
+        },
+    )
+
+    logger.info(f"✅ User memo updated: {npub[:16]}...")
+    return await get_user(npub)
