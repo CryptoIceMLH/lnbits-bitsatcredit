@@ -2,6 +2,27 @@
 
 All notable changes to BitSatCredit extension will be documented in this file.
 
+## [1.6.0] - 2025-01-30
+
+### Added - Public Page Hero Header
+- **Welcome Header**: Added prominent "Welcome to BitSatRelay" hero section at top of public page
+- **Subtitle**: "BTC and Nostr Off-Grid Satellite Relay System" tagline for clarity
+
+### Changed - Public Page
+- **Enhanced Relay URL Display**: Increased relay URL from body2 to h6 (heading size) with bold weight
+- **Larger Copy Button**: Changed copy button from sm to md size for better usability
+- **Bolder Label**: "Nostr Relay:" label upgraded to subtitle1 with medium weight
+
+### Fixed - Critical Bug
+- **Prevent Spam Account Creation**: Fixed `/api/v1/user/{npub}/balance` and `/api/v1/user/{npub}/can-spend` endpoints that were auto-creating user accounts with 0 balance
+- **Read-Only User Checks**: Changed endpoints to use `get_user()` instead of `get_or_create_user()`, preventing spam accounts from scripts checking user balances
+- Balance endpoint now returns 404 if user doesn't exist (user must top up first)
+- Can-spend endpoint returns `can_afford: false` for non-existent users without creating accounts
+
+### Technical
+- Only `/api/v1/topup` endpoint should create new users (when they actually pay and top up)
+- Relay scripts now properly check existing users without side effects
+
 ## [1.5.3] - 2025-01-30
 
 ### Changed - Public Page

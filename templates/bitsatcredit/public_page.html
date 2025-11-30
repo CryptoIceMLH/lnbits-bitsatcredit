@@ -20,6 +20,16 @@
 {% block page %}
 <div class="row q-col-gutter-md justify-center">
   <div class="col-12 col-sm-8 col-md-6 col-lg-5">
+    <!-- Hero Header -->
+    <div class="text-center q-mb-lg">
+      <h1 class="text-h4 text-weight-bold q-mb-xs" style="color: #1976d2;">
+        Welcome to BitSatRelay
+      </h1>
+      <p class="text-body1 text-grey-8 q-mb-none">
+        BTC and Nostr Off-Grid Satellite Relay System
+      </p>
+    </div>
+
     <!-- System Status and Nostr Relay - Top Info Bar -->
     <div class="row q-mb-md items-center">
       <div v-if="systemStatus" class="col-auto">
@@ -33,13 +43,13 @@
       </div>
       <div class="col q-pl-md">
         <div class="row items-center q-gutter-xs">
-          <span class="text-body2 text-grey-7">Nostr Relay:</span>
-          <span class="text-body2 text-primary text-weight-medium" style="font-family: monospace;">wss://bitsat.molonlabe.holdings</span>
+          <span class="text-subtitle1 text-grey-8 text-weight-medium">Nostr Relay:</span>
+          <span class="text-h6 text-primary text-weight-bold" style="font-family: monospace;">wss://bitsat.molonlabe.holdings</span>
           <q-btn
             flat
             dense
             round
-            size="sm"
+            size="md"
             icon="content_copy"
             color="primary"
             @click="copyRelayUrl"

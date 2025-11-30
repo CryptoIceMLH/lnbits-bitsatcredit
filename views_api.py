@@ -44,8 +44,10 @@ async def api_get_user(npub: str) -> BitSatUser:
     response_description="Balance in sats",
 )
 async def api_get_balance(npub: str) -> dict:
-    """Get user's current balance"""
-    user = await get_or_create_user(npub)
+    """Get user's current balance (read-only, does not create user)"""
+    user = await get_user(npub)
+    if not user:
+        raise HTTPException(HTTPStatus.NOT_FOUND, f"User {npub} not found. Please top up first.")
     return {
         "npub": npub,
         "balance_sats": user.balance_sats,
@@ -62,8 +64,17 @@ async def api_get_balance(npub: str) -> dict:
     response_description="Whether user can spend amount",
 )
 async def api_can_spend(npub: str, amount: int = Query(..., description="Amount in sats")) -> dict:
-    """Check if user has sufficient balance"""
-    user = await get_or_create_user(npub)
+    """Check if user has sufficient balance (read-only, does not create user)"""
+    user = await get_user(npub)
+    if not user:
+        # User doesn't exist - return can_afford=False without creating account
+        return {
+            "npub": npub,
+            "amount_requested": amount,
+            "current_balance": 0,
+            "can_afford": False,
+            "shortfall": amount
+        }
     can_afford = user.balance_sats >= amount
     return {
         "npub": npub,
