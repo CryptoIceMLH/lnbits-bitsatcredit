@@ -2,6 +2,16 @@
 
 All notable changes to BitSatCredit extension will be documented in this file.
 
+## [1.5.3] - 2025-01-30
+
+### Changed - Public Page
+- **Enhanced Nostr Relay Display**: Increased relay URL text size from caption to body2 with medium weight for better visibility
+- **Improved Copy Button**: Changed copy button size from xs to sm for easier interaction
+- **Removed Branding**: Hidden LNbits-Umbrel header link to prevent navigation to root directory
+
+### Fixed
+- **GitHub Link Display**: Replaced Quasar icon components with simple emoji links to fix text spacing issues
+
 ## [1.5.2] - 2025-01-30
 
 ### Added - Admin Dashboard
