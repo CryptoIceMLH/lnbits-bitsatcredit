@@ -14,6 +14,8 @@ window.app = Vue.createApp({
 
       // User Management
       userList: [],
+      selectedUsers: [],
+      selectAll: false,
       userTable: {
         search: '',
         loading: false,
@@ -23,6 +25,7 @@ window.app = Vue.createApp({
           {name: 'total_spent', align: 'right', label: 'Total Spent', field: 'total_spent', sortable: true},
           {name: 'total_deposited', align: 'right', label: 'Total Deposited', field: 'total_deposited', sortable: true},
           {name: 'message_count', align: 'right', label: 'Messages', field: 'message_count', sortable: true},
+          {name: 'memo', align: 'left', label: 'Memo', field: 'memo', sortable: true},
           {name: 'updated_at', align: 'left', label: 'Last Activity', field: 'updated_at', sortable: true}
         ],
         pagination: {
@@ -45,6 +48,7 @@ window.app = Vue.createApp({
       selectedWallet: null,
       walletOptions: [],
       externalUrl: '',
+      pricePerMessage: 1,
       systemStatus: 'online',
       systemOnline: true,
       systemStatusMessage: '',
@@ -70,6 +74,20 @@ window.app = Vue.createApp({
         npub: '',
         currentBalance: 0,
         newBalance: 0,
+        memo: ''
+      },
+
+      // Edit Memo Dialog
+      editMemoDialog: {
+        show: false,
+        npub: '',
+        memo: ''
+      },
+
+      // Bulk Add Credits Dialog
+      bulkAddCreditsDialog: {
+        show: false,
+        amount: null,
         memo: ''
       },
 
@@ -212,7 +230,58 @@ window.app = Vue.createApp({
       })
     },
 
+    //////////////// User Selection ////////////////////////
+    toggleSelectAll(newValue) {
+      if (newValue) {
+        // Select all filtered users
+        this.selectedUsers = this.filteredUsers.map(u => u.npub)
+      } else {
+        // Deselect all
+        this.selectedUsers = []
+      }
+    },
+
     //////////////// Settings ////////////////////////
+    async getPricePerMessage() {
+      try {
+        const {data} = await LNbits.api.request(
+          'GET',
+          '/bitsatcredit/api/v1/settings/price',
+          null
+        )
+        this.pricePerMessage = data.price_per_message_sats
+      } catch (error) {
+        console.error('Error fetching price:', error)
+      }
+    },
+
+    async savePriceSetting() {
+      try {
+        if (!this.pricePerMessage || this.pricePerMessage < 1) {
+          Quasar.Notify.create({
+            type: 'warning',
+            message: 'Price must be at least 1 sat',
+            timeout: 1000
+          })
+          return
+        }
+
+        const {data} = await LNbits.api.request(
+          'POST',
+          `/bitsatcredit/api/v1/admin/settings/price?price_sats=${this.pricePerMessage}`,
+          this.g.user.wallets[0].adminkey
+        )
+
+        Quasar.Notify.create({
+          type: 'positive',
+          message: `Price updated to ${this.pricePerMessage} sats per message`,
+          timeout: 2000
+        })
+      } catch (error) {
+        LNbits.utils.notifyApiError(error)
+      }
+    },
+
     loadWalletOptions() {
       if (this.g.user && this.g.user.wallets) {
         this.walletOptions = this.g.user.wallets.map(w => ({
@@ -467,6 +536,93 @@ window.app = Vue.createApp({
       } catch (error) {
         LNbits.utils.notifyApiError(error)
       }
+    },
+
+    showEditMemoDialog(user) {
+      this.editMemoDialog = {
+        show: true,
+        npub: user.npub,
+        memo: user.memo || ''
+      }
+    },
+
+    async saveUserMemo() {
+      try {
+        await LNbits.api.request(
+          'POST',
+          `/bitsatcredit/api/v1/admin/user/${this.editMemoDialog.npub}/memo?memo=${encodeURIComponent(this.editMemoDialog.memo || '')}`,
+          this.g.user.wallets[0].adminkey
+        )
+
+        Quasar.Notify.create({
+          type: 'positive',
+          message: 'Memo saved successfully',
+          timeout: 2000
+        })
+
+        this.editMemoDialog.show = false
+        await this.getUsers()
+      } catch (error) {
+        LNbits.utils.notifyApiError(error)
+      }
+    },
+
+    showBulkAddCreditsDialog() {
+      this.bulkAddCreditsDialog = {
+        show: true,
+        amount: null,
+        memo: 'Bulk credit addition'
+      }
+    },
+
+    async bulkAddCreditsToUsers() {
+      try {
+        const amount = this.bulkAddCreditsDialog.amount
+        const memo = this.bulkAddCreditsDialog.memo || 'Bulk credit addition'
+
+        if (!amount || amount <= 0) {
+          Quasar.Notify.create({
+            type: 'warning',
+            message: 'Amount must be positive',
+            timeout: 1000
+          })
+          return
+        }
+
+        // Add credits to each selected user
+        let successCount = 0
+        for (const npub of this.selectedUsers) {
+          try {
+            await LNbits.api.request(
+              'POST',
+              `/bitsatcredit/api/v1/admin/add-credits`,
+              this.g.user.wallets[0].adminkey,
+              {
+                npub: npub,
+                amount: amount,
+                memo: memo
+              }
+            )
+            successCount++
+          } catch (error) {
+            console.error(`Failed to add credits to ${npub}:`, error)
+          }
+        }
+
+        Quasar.Notify.create({
+          type: 'positive',
+          message: `Added ${amount} sats to ${successCount} user(s)`,
+          timeout: 3000
+        })
+
+        this.bulkAddCreditsDialog.show = false
+        this.selectedUsers = []
+        this.selectAll = false
+        await this.getUsers()
+        await this.getStats()
+      } catch (error) {
+        LNbits.utils.notifyApiError(error)
+      }
     }
   },
 
@@ -478,6 +634,7 @@ window.app = Vue.createApp({
     await this.getUsers()
     await this.getRecentTransactions()
     await this.getSystemStatus()
+    await this.getPricePerMessage()
 
     // Load wallet options and settings
     this.loadWalletOptions()

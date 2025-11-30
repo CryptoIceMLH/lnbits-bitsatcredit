@@ -16,6 +16,7 @@ class User(BaseModel):
     total_spent: int = 0
     total_deposited: int = 0
     message_count: int = 0
+    memo: str | None = None
     created_at: int | None = None
     updated_at: int | None = None
 

@@ -95,3 +95,27 @@ async def m005_system_settings(db):
         VALUES ('system_status', 'online'), ('status_message', '');
         """
     )
+
+
+async def m006_add_user_memo(db):
+    """Add memo column and price setting (v1.5.2)"""
+    # Add memo column - ignore if already exists
+    try:
+        await db.execute(
+            """
+            ALTER TABLE bitsatcredit.users ADD COLUMN memo TEXT;
+            """
+        )
+    except Exception:
+        pass
+
+    # Insert price setting - ignore if already exists
+    try:
+        await db.execute(
+            """
+            INSERT INTO bitsatcredit.system_settings (key, value)
+            VALUES ('price_per_message', '1');
+            """
+        )
+    except Exception:
+        pass

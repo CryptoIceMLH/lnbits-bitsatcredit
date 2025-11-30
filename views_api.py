@@ -317,6 +317,60 @@ async def api_set_system_status(
 
 
 ############################# Health Check #############################
+############################# Settings #############################
+@bitsatcredit_api_router.get(
+    "/api/v1/settings/price",
+    name="Get Price Per Message",
+    summary="Get current price per message setting",
+    response_description="Price in sats",
+)
+async def api_get_price() -> dict:
+    """Get current price per message (public endpoint)"""
+    from .crud import get_setting
+
+    price = await get_setting("price_per_message", "1")
+    return {"price_per_message_sats": int(price)}
+
+
+@bitsatcredit_api_router.post(
+    "/api/v1/admin/settings/price",
+    name="Set Price Per Message",
+    summary="Set price per message (admin only)",
+    response_description="Updated price",
+    dependencies=[Depends(check_admin)],
+)
+async def api_set_price(
+    price_sats: int = Query(..., ge=1, description="Price per message in sats"),
+    user: User = Depends(check_user_exists)
+) -> dict:
+    """Admin endpoint to set price per message"""
+    from .crud import set_setting
+
+    await set_setting("price_per_message", str(price_sats))
+    return {"price_per_message_sats": price_sats, "updated": True}
+
+
+@bitsatcredit_api_router.post(
+    "/api/v1/admin/user/{npub}/memo",
+    name="Set User Memo",
+    summary="Set admin memo/note for user (admin only)",
+    response_description="Updated user",
+    response_model=BitSatUser,
+    dependencies=[Depends(check_admin)],
+)
+async def api_set_user_memo(
+    npub: str,
+    memo: str = Query(..., description="Admin memo/note for this user"),
+    user: User = Depends(check_user_exists)
+) -> BitSatUser:
+    """Admin endpoint to set memo/note for user"""
+    from .crud import set_user_memo
+
+    updated_user = await set_user_memo(npub, memo)
+    return updated_user
+
+
+############################# Health Check #############################
 @bitsatcredit_api_router.get(
     "/api/v1/health",
     name="Health Check",
