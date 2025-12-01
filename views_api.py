@@ -141,6 +141,56 @@ async def api_create_topup(
     )
 
 
+@bitsatcredit_api_router.post(
+    "/api/v1/user/{npub}/invoice",
+    name="Create User Invoice",
+    summary="Generate Lightning invoice for user top-up via DM bot",
+    response_model=TopUpPaymentRequest,
+)
+async def api_create_user_invoice(
+    npub: str,
+    amount: int = Query(..., ge=10, description="Amount in sats (minimum 10)"),
+) -> TopUpPaymentRequest:
+    """
+    Generate Lightning invoice for user to top up credits.
+    Called by DM bot when user sends /topup command.
+
+    The wallet_id is hardcoded to the BitSatCredit extension wallet.
+
+    Args:
+        npub: User's Nostr public key (npub1...)
+        amount: Amount in sats (minimum 10)
+
+    Returns:
+        TopUpPaymentRequest with:
+        - topup_id: Database record ID
+        - payment_hash: Lightning payment hash
+        - bolt11: Lightning invoice (payment_request)
+    """
+    # Validate amount
+    if amount < 10:
+        raise HTTPException(HTTPStatus.BAD_REQUEST, "Amount must be at least 10 sats")
+
+    if amount > 1000000:
+        raise HTTPException(HTTPStatus.BAD_REQUEST, "Amount cannot exceed 1,000,000 sats")
+
+    # BitSatCredit extension wallet ID (hardcoded)
+    BITSATCREDIT_WALLET_ID = "6e1faaf6356b43029124fdeb5f93a297"
+
+    # Generate invoice using extension wallet
+    result = await generate_topup_invoice(
+        npub=npub,
+        amount_sats=amount,
+        wallet_id=BITSATCREDIT_WALLET_ID
+    )
+
+    return TopUpPaymentRequest(
+        topup_id=result["topup_id"],
+        payment_hash=result["payment_hash"],
+        bolt11=result["bolt11"]
+    )
+
+
 ############################# Transactions #############################
 @bitsatcredit_api_router.get(
     "/api/v1/user/{npub}/transactions",
