@@ -1,6 +1,6 @@
 # BitSatCredit - LNbits Extension
 
-User credit management system for [BitSatRelay](https://github.com/CryptoIceMLH/BitSatRelay) satellite messaging relay.
+https://lnbits.molonlabe.holdings/bitsatcredit/6e1faaf6356b43029124fdeb5f93a297
 
 ---
 
