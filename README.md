@@ -1,6 +1,32 @@
 # BitSatCredit - LNbits Extension
 
-User credit management system for [BitSatRelay](https://github.com/CryptoIceMLH/lnbits-bitsatcredit) satellite messaging relay.
+User credit management system for [BitSatRelay](https://github.com/CryptoIceMLH/BitSatRelay) satellite messaging relay.
+
+---
+
+## 🔗 Related Repositories - Integrated System
+
+This is part of a three-component integrated system. Each repository handles a different part of the BitSatRelay network:
+
+| Repository | Purpose | Description |
+|------------|---------|-------------|
+| **[BitSatRelay](https://github.com/CryptoIceMLH/BitSatRelay)** | Terminal-HQ Bridge | Main codebase - Nostr to satellite bridge |
+| **[BitSatRelay-Ground-Station](https://github.com/CryptoIceMLH/BitSatRelay-Ground-Station)** | Off-Grid Terminals | Terminal-1 kits for off-grid satellite TX/RX |
+| **[lnbits-bitsatcredit](https://github.com/CryptoIceMLH/lnbits-bitsatcredit)** | Payment System | LNbits extension for Lightning micropayments (this repo) |
+
+**All three components work together** to create the complete BitSatRelay network.
+
+---
+
+## 💜 Support This Project
+
+If you wish to support my work you can donate with BTC:
+
+⚡ **BTC Lightning**: `cryptoice@walletofsatoshi.com`
+
+⚡ **BTC Onchain**: `347ePgUhyvztUWVZ4YZBmBLgTn8hxUFNeQ`
+
+---
 
 ## Features
 
